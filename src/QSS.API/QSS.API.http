@@ -1,0 +1,6 @@
+@QSS.API_HostAddress = http://localhost:5254
+
+GET {{QSS.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

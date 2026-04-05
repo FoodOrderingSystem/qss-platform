@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — QSS Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="~/css/app.css" />
+</head>
+<body class="h-full font-sans antialiased" x-data="{ sidebarOpen: true, notifOpen: false }">
+
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <div class="flex h-full">
+        <!-- Sidebar -->
+        <aside class="bg-slate-900 text-white flex flex-col transition-all duration-300"
+               :class="sidebarOpen ? 'w-64' : 'w-16'">
+            <div class="flex items-center gap-3 px-4 py-5 border-b border-slate-700">
+                <div class="flex-shrink-0 w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-tooth text-white text-sm"></i>
+                </div>
+                <span class="font-bold text-lg whitespace-nowrap overflow-hidden transition-all" 
+                      :class="sidebarOpen ? 'opacity-100' : 'opacity-0 w-0'">QSS Platform</span>
+            </div>
+
+            <nav class="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+                @{
+                    var navItems = new[]
+                    {
+                        new { Icon = "fas fa-tachometer-alt", Label = "Dashboard", Href = "/Dashboard" },
+                        new { Icon = "fas fa-tasks", Label = "Tasks", Href = "/Tasks" },
+                        new { Icon = "fas fa-project-diagram", Label = "Processes", Href = "/Processes" },
+                        new { Icon = "fas fa-door-open", Label = "Rooms", Href = "/Rooms" },
+                        new { Icon = "fas fa-laptop-medical", Label = "Devices", Href = "/Devices" },
+                        new { Icon = "fas fa-boxes", Label = "Materials", Href = "/Materials" },
+                        new { Icon = "fas fa-pills", Label = "Medications", Href = "/Medications" },
+                        new { Icon = "fas fa-comments", Label = "Chat", Href = "/Chat" },
+                        new { Icon = "fas fa-book-open", Label = "Learning", Href = "/Learning" },
+                        new { Icon = "fas fa-chart-bar", Label = "Reports", Href = "/Reports" },
+                        new { Icon = "fas fa-users", Label = "Users", Href = "/Users" },
+                    };
+                    var currentPath = Context.Request.Path.Value ?? "/";
+                }
+                @foreach (var item in navItems)
+                {
+                    var isActive = currentPath.StartsWith(item.Href);
+                    <a href="@item.Href"
+                       class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors @(isActive ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white")">
+                        <i class="@item.Icon w-5 text-center flex-shrink-0"></i>
+                        <span class="whitespace-nowrap overflow-hidden transition-all"
+                              :class="sidebarOpen ? 'opacity-100' : 'opacity-0 w-0'">@item.Label</span>
+                    </a>
+                }
+            </nav>
+
+            <div class="border-t border-slate-700 p-3">
+                <a href="/Logout"
+                   class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors">
+                    <i class="fas fa-sign-out-alt w-5 text-center flex-shrink-0"></i>
+                    <span class="whitespace-nowrap overflow-hidden" :class="sidebarOpen ? 'opacity-100' : 'opacity-0 w-0'">Logout</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <!-- Topbar -->
+            <header class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+                <button @@click="sidebarOpen = !sidebarOpen" class="text-gray-500 hover:text-gray-700 p-1 rounded">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
+                <div class="flex items-center gap-4">
+                    <!-- Notifications -->
+                    <div class="relative" x-data="notificationsPanel()">
+                        <button @@click="toggle()" class="relative text-gray-500 hover:text-gray-700 p-1 rounded">
+                            <i class="fas fa-bell text-lg"></i>
+                            <span x-show="unreadCount > 0"
+                                  x-text="unreadCount"
+                                  class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center"></span>
+                        </button>
+                        <div x-show="open" @@click.outside="open = false"
+                             x-transition
+                             class="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 max-h-96 overflow-y-auto">
+                            <div class="p-3 border-b font-semibold text-sm text-gray-700">Notifications</div>
+                            <template x-for="n in notifications" :key="n.id">
+                                <div class="p-3 border-b text-sm hover:bg-gray-50 cursor-pointer"
+                                     :class="n.isRead ? 'text-gray-500' : 'text-gray-900 font-medium'"
+                                     @@click="markRead(n.id)">
+                                    <div x-text="n.title"></div>
+                                    <div class="text-xs text-gray-400 mt-0.5" x-text="n.message"></div>
+                                </div>
+                            </template>
+                            <div x-show="notifications.length === 0" class="p-4 text-center text-gray-400 text-sm">
+                                No notifications
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Menu -->
+                    <div class="flex items-center gap-2">
+                        <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-white text-xs"></i>
+                        </div>
+                        <span class="text-sm font-medium text-gray-700">@User.Identity?.Name</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <main class="flex-1 overflow-y-auto p-6">
+                @RenderBody()
+            </main>
+        </div>
+    </div>
+}
+else
+{
+    @RenderBody()
+}
+
+<script src="~/js/app.js"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

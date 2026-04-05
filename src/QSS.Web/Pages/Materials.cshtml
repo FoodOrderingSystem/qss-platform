@@ -1,0 +1,149 @@
+@page
+@model QSS.Web.Pages.MaterialsModel
+@{ ViewData["Title"] = "Materials"; }
+
+<div x-data="materialsApp()" x-init="load()">
+    <div class="flex items-center justify-between mb-6">
+        <div><h1 class="text-2xl font-bold text-gray-900">Materials Inventory</h1>
+        <p class="text-sm text-gray-500">Track stock levels, expiration dates, and suppliers</p></div>
+        <button @@click="showCreate = true" class="btn-primary"><i class="fas fa-plus"></i> Add Material</button>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+            <p class="text-2xl font-bold text-gray-900" x-text="materials.length"></p>
+            <p class="text-xs text-gray-500">Total Items</p>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+            <p class="text-2xl font-bold text-orange-600" x-text="materials.filter(m => m.isLowStock).length"></p>
+            <p class="text-xs text-gray-500">Low Stock</p>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+            <p class="text-2xl font-bold text-red-600" x-text="materials.filter(m => m.isExpiringSoon).length"></p>
+            <p class="text-xs text-gray-500">Expiring Soon</p>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+            <p class="text-2xl font-bold text-green-600" x-text="materials.filter(m => !m.isLowStock && !m.isExpiringSoon).length"></p>
+            <p class="text-xs text-gray-500">OK</p>
+        </div>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-100">
+                <tr>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Material</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Stock</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Supplier</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Expiration</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Status</th>
+                    <th class="px-4 py-3 text-right font-medium text-gray-500">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+                <template x-for="m in materials" :key="m.id">
+                    <tr class="hover:bg-gray-50" :class="m.isLowStock ? 'bg-orange-50' : ''">
+                        <td class="px-4 py-3">
+                            <p class="font-medium text-gray-900" x-text="m.name"></p>
+                            <p class="text-xs text-gray-400" x-text="m.category || ''"></p>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="font-semibold" :class="m.isLowStock ? 'text-orange-600' : 'text-gray-900'"
+                                  x-text="m.stockQuantity"></span>
+                            <span class="text-gray-400 text-xs" x-text="' / min ' + m.minimumStockLevel + ' ' + m.unit"></span>
+                        </td>
+                        <td class="px-4 py-3 text-gray-600">
+                            <span x-show="m.supplierLink">
+                                <a :href="m.supplierLink" target="_blank" class="text-blue-600 hover:underline text-xs" x-text="m.supplierName || 'Supplier'"></a>
+                            </span>
+                            <span x-show="!m.supplierLink" class="text-gray-400 text-xs" x-text="m.supplierName || '—'"></span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span :class="m.isExpiringSoon ? 'text-red-600 font-medium' : 'text-gray-600'"
+                                  x-text="formatDate(m.expirationDate)"></span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex gap-1 flex-wrap">
+                                <span x-show="m.isLowStock" class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Low Stock</span>
+                                <span x-show="m.isExpiringSoon" class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Expiring</span>
+                                <span x-show="!m.isLowStock && !m.isExpiringSoon" class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">OK</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <button @@click="deleteMaterial(m.id)" class="text-red-400 hover:text-red-600 p-1"><i class="fas fa-trash text-xs"></i></button>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+
+    <div x-show="showCreate" class="modal-backdrop" x-transition>
+        <div class="modal p-6">
+            <h2 class="text-lg font-bold text-gray-900 mb-5">Add Material</h2>
+            <form x-on:submit.prevent="createMaterial()">
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="form-label">Name *</label>
+                        <input x-model="form.name" type="text" class="form-input" required /></div>
+                        <div><label class="form-label">Category</label>
+                        <input x-model="form.category" type="text" class="form-input" placeholder="e.g. PPE" /></div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div><label class="form-label">Stock Qty *</label>
+                        <input x-model.number="form.stockQuantity" type="number" min="0" class="form-input" required /></div>
+                        <div><label class="form-label">Min Level</label>
+                        <input x-model.number="form.minimumStockLevel" type="number" min="0" class="form-input" /></div>
+                        <div><label class="form-label">Unit</label>
+                        <select x-model.number="form.unit" class="form-input">
+                            <option value="0">Pieces</option>
+                            <option value="1">Boxes</option>
+                            <option value="2">Bottles</option>
+                            <option value="3">Packs</option>
+                            <option value="4">Liters</option>
+                            <option value="5">Milliliters</option>
+                            <option value="6">Grams</option>
+                            <option value="7">Kilograms</option>
+                        </select></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="form-label">Supplier Name</label>
+                        <input x-model="form.supplierName" type="text" class="form-input" /></div>
+                        <div><label class="form-label">Supplier URL</label>
+                        <input x-model="form.supplierLink" type="url" class="form-input" /></div>
+                    </div>
+                    <div><label class="form-label">Expiration Date</label>
+                    <input x-model="form.expirationDate" type="date" class="form-input" /></div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @@click="showCreate = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function materialsApp() {
+    return {
+        materials: [], showCreate: false,
+        form: { name: '', category: '', stockQuantity: 0, minimumStockLevel: 5, unit: 0, supplierName: '', supplierLink: '', expirationDate: '' },
+        async load() { this.materials = await apiRequest('GET', '/materials'); },
+        async createMaterial() {
+            try {
+                await apiRequest('POST', '/materials', { ...this.form, expirationDate: this.form.expirationDate || null });
+                this.showCreate = false; await this.load(); showToast('Material added');
+            } catch(e) { showToast('Failed', 'error'); }
+        },
+        async deleteMaterial(id) {
+            if(!confirm('Delete material?')) return;
+            try { await apiRequest('DELETE', `/materials/${id}`); await this.load(); showToast('Deleted'); }
+            catch(e) { showToast('Failed', 'error'); }
+        }
+    };
+}
+</script>
+}

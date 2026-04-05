@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  qss-api:
+    build:
+      context: .
+      dockerfile: src/QSS.API/Dockerfile
+    container_name: qss-api
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/qss.db
+      - Jwt__Key=QSS-Platform-Super-Secret-Key-2024-Min32Characters!
+      - Jwt__Issuer=QSS
+      - Jwt__Audience=QSS
+    volumes:
+      - qss-data:/app/data
+      - qss-uploads:/app/wwwroot/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  qss-web:
+    build:
+      context: .
+      dockerfile: src/QSS.Web/Dockerfile
+    container_name: qss-web
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ApiBaseUrl=http://qss-api:8080
+    depends_on:
+      - qss-api
+
+volumes:
+  qss-data:
+  qss-uploads:

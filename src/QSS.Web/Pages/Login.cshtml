@@ -1,0 +1,79 @@
+@page
+@model QSS.Web.Pages.LoginModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Login";
+}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gradient-to-br from-slate-900 to-slate-800">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QSS Platform — Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-full flex items-center justify-center p-4">
+<div class="w-full max-w-md">
+    <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-xl">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-white">QSS Platform</h1>
+        <p class="text-slate-400 mt-1 text-sm">Quality Management for Dental Practices</p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-2xl p-8">
+        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+        {
+            <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">
+                @Model.ErrorMessage
+            </div>
+        }
+
+        <form method="post">
+            @Html.AntiForgeryToken()
+            <div class="mb-5">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <input type="email" name="Email" value="@Model.Email" required autocomplete="email"
+                       class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       placeholder="you@example.com" />
+            </div>
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input type="password" name="Password" required autocomplete="current-password"
+                       class="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       placeholder="••••••••" />
+            </div>
+            <button type="submit"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors text-sm">
+                Sign In
+            </button>
+        </form>
+
+        <div class="mt-6 pt-6 border-t border-gray-100">
+            <p class="text-xs text-gray-400 text-center font-medium mb-3">Default Test Credentials</p>
+            <div class="space-y-1.5 text-xs text-gray-500">
+                <div class="flex justify-between bg-gray-50 rounded px-3 py-1.5">
+                    <span class="font-medium text-blue-600">Superadmin</span>
+                    <span>superadmin&#64;qss.com / Admin&#64;1234!</span>
+                </div>
+                <div class="flex justify-between bg-gray-50 rounded px-3 py-1.5">
+                    <span class="font-medium text-green-600">Admin</span>
+                    <span>admin&#64;qss.com / Admin&#64;1234!</span>
+                </div>
+                <div class="flex justify-between bg-gray-50 rounded px-3 py-1.5">
+                    <span class="font-medium text-purple-600">Dentist</span>
+                    <span>dentist&#64;qss.com / Admin&#64;1234!</span>
+                </div>
+                <div class="flex justify-between bg-gray-50 rounded px-3 py-1.5">
+                    <span class="font-medium text-orange-600">Assistant</span>
+                    <span>assistant&#64;qss.com / Admin&#64;1234!</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

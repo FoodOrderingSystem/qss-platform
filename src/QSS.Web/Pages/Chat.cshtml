@@ -1,0 +1,120 @@
+@page
+@model QSS.Web.Pages.ChatModel
+@{ ViewData["Title"] = "Chat"; }
+
+<div x-data="chatApp()" x-init="init()">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Team Chat</h1>
+        <p class="text-sm text-gray-500">Real-time communication with your team</p>
+    </div>
+
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden" style="height: 70vh; display: flex; flex-direction: column;">
+        <!-- User List Header -->
+        <div class="border-b border-gray-100 px-4 py-3 flex gap-2 overflow-x-auto">
+            <button @@click="setChannel('team', 'All Team')"
+                    class="flex-shrink-0 text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+                    :class="channel === 'team' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
+                <i class="fas fa-users mr-1"></i> All Team
+            </button>
+            <template x-for="u in users" :key="u.id">
+                <button @@click="setChannel(u.id, u.fullName)"
+                        class="flex-shrink-0 text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+                        :class="channel === u.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                        x-text="u.fullName.split(' ')[0]">
+                </button>
+            </template>
+        </div>
+
+        <!-- Messages -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-3" id="messagesContainer">
+            <template x-for="msg in messages" :key="msg.id">
+                <div class="flex gap-3" :class="msg.senderId === currentUserId ? 'flex-row-reverse' : ''">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                         x-text="msg.senderName?.charAt(0) ?? '?'"></div>
+                    <div :class="msg.senderId === currentUserId ? 'items-end' : 'items-start'" class="flex flex-col max-w-xs">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-xs font-medium text-gray-600" x-text="msg.senderName"></span>
+                            <span class="text-xs text-gray-400" x-text="formatDateTime(msg.createdAt)"></span>
+                        </div>
+                        <div class="px-3 py-2 rounded-2xl text-sm"
+                             :class="msg.senderId === currentUserId ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'"
+                             x-text="msg.content">
+                        </div>
+                    </div>
+                </div>
+            </template>
+            <div x-show="messages.length === 0" class="text-center text-gray-400 text-sm py-12">
+                <i class="fas fa-comments text-3xl mb-3 block text-gray-200"></i>
+                No messages yet. Start the conversation!
+            </div>
+        </div>
+
+        <!-- Input -->
+        <div class="border-t border-gray-100 p-3 flex gap-2">
+            <input x-model="newMessage" type="text" placeholder="Type a message..." class="form-input flex-1"
+                   @@keydown.enter="sendMessage()" />
+            <button @@click="sendMessage()" :disabled="!newMessage.trim()"
+                    class="btn-primary disabled:opacity-50">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function chatApp() {
+    return {
+        users: [], messages: [], channel: 'team', channelName: 'All Team',
+        newMessage: '', currentUserId: null, pollInterval: null,
+
+        async init() {
+            // Get current user from cookie/token
+            const token = getToken();
+            if (token) {
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    this.currentUserId = payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+                } catch(e) {}
+            }
+            this.users = await apiRequest('GET', '/users');
+            await this.loadMessages();
+            // Poll every 5 seconds
+            this.pollInterval = setInterval(() => this.loadMessages(), 5000);
+        },
+
+        async setChannel(channelId, name) {
+            this.channel = channelId;
+            this.channelName = name;
+            await this.loadMessages();
+        },
+
+        async loadMessages() {
+            try {
+                let params = '';
+                if (this.channel === 'team') params = '?team=General';
+                else params = `?recipientId=${this.channel}`;
+                this.messages = await apiRequest('GET', `/chat${params}`);
+                this.$nextTick(() => {
+                    const c = document.getElementById('messagesContainer');
+                    if (c) c.scrollTop = c.scrollHeight;
+                });
+            } catch(e) {}
+        },
+
+        async sendMessage() {
+            if (!this.newMessage.trim()) return;
+            const body = { content: this.newMessage };
+            if (this.channel === 'team') body.teamName = 'General';
+            else body.recipientId = this.channel;
+            const msg = this.newMessage;
+            this.newMessage = '';
+            try {
+                await apiRequest('POST', '/chat', body);
+                await this.loadMessages();
+            } catch(e) { this.newMessage = msg; showToast('Failed to send', 'error'); }
+        }
+    };
+}
+</script>
+}

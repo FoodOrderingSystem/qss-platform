@@ -1,0 +1,144 @@
+@page
+@model QSS.Web.Pages.MedicationsModel
+@{ ViewData["Title"] = "Medications"; }
+
+<div x-data="medsApp()" x-init="load()">
+    <div class="flex items-center justify-between mb-6">
+        <div><h1 class="text-2xl font-bold text-gray-900">Medications</h1>
+        <p class="text-sm text-gray-500">Log quantities, usage, and expiration tracking</p></div>
+        <button @@click="showCreate = true" class="btn-primary"><i class="fas fa-plus"></i> Add Medication</button>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-100">
+                <tr>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Medication</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Active Ingredient</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Quantity</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Expiration</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Status</th>
+                    <th class="px-4 py-3 text-right font-medium text-gray-500">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+                <template x-for="m in medications" :key="m.id">
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3">
+                            <p class="font-medium text-gray-900" x-text="m.name"></p>
+                            <p class="text-xs text-gray-400" x-text="m.dosage || ''"></p>
+                        </td>
+                        <td class="px-4 py-3 text-gray-600 text-xs" x-text="m.activeIngredient || '—'"></td>
+                        <td class="px-4 py-3">
+                            <span class="font-semibold" :class="m.isLowStock ? 'text-red-600' : 'text-gray-900'" x-text="m.quantity"></span>
+                            <span class="text-gray-400 text-xs" x-text="' / min ' + m.minimumQuantity"></span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span :class="m.isExpiringSoon ? 'text-red-600 font-medium' : 'text-gray-600'"
+                                  x-text="formatDate(m.expirationDate)"></span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span x-show="m.isLowStock" class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Low Stock</span>
+                            <span x-show="m.isExpiringSoon && !m.isLowStock" class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Expiring</span>
+                            <span x-show="!m.isLowStock && !m.isExpiringSoon" class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">OK</span>
+                        </td>
+                        <td class="px-4 py-3 text-right flex items-center justify-end gap-1">
+                            <button @@click="openUsage(m)" class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">
+                                Log Usage
+                            </button>
+                            <button @@click="deleteMed(m.id)" class="text-red-400 hover:text-red-600 p-1 ml-1"><i class="fas fa-trash text-xs"></i></button>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Create Modal -->
+    <div x-show="showCreate" class="modal-backdrop" x-transition>
+        <div class="modal p-6">
+            <h2 class="text-lg font-bold text-gray-900 mb-5">Add Medication</h2>
+            <form x-on:submit.prevent="createMed()">
+                <div class="space-y-4">
+                    <div><label class="form-label">Name *</label>
+                    <input x-model="form.name" type="text" class="form-input" required /></div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="form-label">Active Ingredient</label>
+                        <input x-model="form.activeIngredient" type="text" class="form-input" /></div>
+                        <div><label class="form-label">Dosage</label>
+                        <input x-model="form.dosage" type="text" class="form-input" /></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="form-label">Quantity *</label>
+                        <input x-model.number="form.quantity" type="number" min="0" class="form-input" required /></div>
+                        <div><label class="form-label">Min Quantity</label>
+                        <input x-model.number="form.minimumQuantity" type="number" min="0" class="form-input" /></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="form-label">Expiration Date</label>
+                        <input x-model="form.expirationDate" type="date" class="form-input" /></div>
+                        <div><label class="form-label">Batch Number</label>
+                        <input x-model="form.batchNumber" type="text" class="form-input" /></div>
+                    </div>
+                    <div><label class="form-label">Storage Instructions</label>
+                    <textarea x-model="form.storageInstructions" class="form-input" rows="2"></textarea></div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @@click="showCreate = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Log Usage Modal -->
+    <div x-show="showUsage" class="modal-backdrop" x-transition>
+        <div class="modal p-6" style="max-width:400px">
+            <h2 class="text-lg font-bold text-gray-900 mb-2">Log Usage</h2>
+            <p class="text-sm text-gray-600 mb-5" x-text="selectedMed?.name"></p>
+            <form x-on:submit.prevent="logUsage()">
+                <div class="space-y-4">
+                    <div><label class="form-label">Quantity Used *</label>
+                    <input x-model.number="usageForm.quantityUsed" type="number" min="1" class="form-input" required /></div>
+                    <div><label class="form-label">Notes</label>
+                    <textarea x-model="usageForm.notes" class="form-input" rows="2" placeholder="Patient, procedure..."></textarea></div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @@click="showUsage = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Log Usage</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function medsApp() {
+    return {
+        medications: [], showCreate: false, showUsage: false, selectedMed: null,
+        form: { name: '', activeIngredient: '', dosage: '', quantity: 0, minimumQuantity: 2, expirationDate: '', batchNumber: '', storageInstructions: '' },
+        usageForm: { quantityUsed: 1, notes: '' },
+        async load() { this.medications = await apiRequest('GET', '/medications'); },
+        async createMed() {
+            try {
+                await apiRequest('POST', '/medications', { ...this.form, expirationDate: this.form.expirationDate || null });
+                this.showCreate = false; await this.load(); showToast('Medication added');
+            } catch(e) { showToast('Failed', 'error'); }
+        },
+        openUsage(med) { this.selectedMed = med; this.usageForm = { quantityUsed: 1, notes: '' }; this.showUsage = true; },
+        async logUsage() {
+            try {
+                await apiRequest('POST', `/medications/${this.selectedMed.id}/log-usage`, this.usageForm);
+                this.showUsage = false; await this.load(); showToast('Usage logged');
+            } catch(e) { showToast(e.message || 'Failed', 'error'); }
+        },
+        async deleteMed(id) {
+            if(!confirm('Delete medication?')) return;
+            try { await apiRequest('DELETE', `/medications/${id}`); await this.load(); showToast('Deleted'); }
+            catch(e) { showToast('Failed', 'error'); }
+        }
+    };
+}
+</script>
+}

@@ -1,0 +1,77 @@
+@page
+@model QSS.Web.Pages.RoomsModel
+@{ ViewData["Title"] = "Rooms"; }
+
+<div x-data="roomsApp()" x-init="load()">
+    <div class="flex items-center justify-between mb-6">
+        <div><h1 class="text-2xl font-bold text-gray-900">Rooms</h1>
+        <p class="text-sm text-gray-500">Manage practice rooms and their resources</p></div>
+        <button @@click="showCreate = true" class="btn-primary"><i class="fas fa-plus"></i> Add Room</button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <template x-for="r in rooms" :key="r.id">
+            <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-door-open text-blue-600 text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900" x-text="r.name"></h3>
+                        <p class="text-xs text-gray-400" x-text="r.location || 'No location'"></p>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mb-4" x-text="r.description || 'No description'"></p>
+                <div class="flex items-center justify-between text-xs text-gray-500">
+                    <span><i class="fas fa-laptop-medical mr-1"></i><span x-text="r.deviceCount"></span> devices</span>
+                    <span :class="r.openTaskCount > 0 ? 'text-orange-600 font-medium' : ''">
+                        <i class="fas fa-tasks mr-1"></i><span x-text="r.openTaskCount"></span> open tasks
+                    </span>
+                    <button @@click="deleteRoom(r.id)" class="text-red-400 hover:text-red-600">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <div x-show="showCreate" class="modal-backdrop" x-transition>
+        <div class="modal p-6">
+            <h2 class="text-lg font-bold text-gray-900 mb-5">Add Room</h2>
+            <form x-on:submit.prevent="createRoom()">
+                <div class="space-y-4">
+                    <div><label class="form-label">Room Name *</label>
+                    <input x-model="form.name" type="text" class="form-input" required /></div>
+                    <div><label class="form-label">Location</label>
+                    <input x-model="form.location" type="text" class="form-input" /></div>
+                    <div><label class="form-label">Description</label>
+                    <textarea x-model="form.description" class="form-input" rows="2"></textarea></div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @@click="showCreate = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Add Room</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function roomsApp() {
+    return {
+        rooms: [], showCreate: false, form: { name: '', location: '', description: '' },
+        async load() { this.rooms = await apiRequest('GET', '/rooms'); },
+        async createRoom() {
+            try { await apiRequest('POST', '/rooms', this.form); this.showCreate = false; await this.load(); showToast('Room added'); }
+            catch(e) { showToast('Failed', 'error'); }
+        },
+        async deleteRoom(id) {
+            if(!confirm('Delete room?')) return;
+            try { await apiRequest('DELETE', `/rooms/${id}`); await this.load(); showToast('Deleted'); }
+            catch(e) { showToast('Failed', 'error'); }
+        }
+    };
+}
+</script>
+}

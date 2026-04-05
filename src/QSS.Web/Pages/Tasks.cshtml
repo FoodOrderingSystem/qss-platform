@@ -1,0 +1,307 @@
+@page
+@model QSS.Web.Pages.TasksModel
+@{
+    ViewData["Title"] = "Tasks";
+}
+
+<div x-data="tasksApp()" x-init="load()">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Tasks</h1>
+            <p class="text-sm text-gray-500 mt-0.5">Manage and track all tasks</p>
+        </div>
+        <button @@click="openCreate()" class="btn-primary">
+            <i class="fas fa-plus"></i> New Task
+        </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5 flex flex-wrap gap-3">
+        <select x-model="filter.status" @@change="load()" class="form-input w-auto">
+            <option value="">All Statuses</option>
+            <option value="Open">Open</option>
+            <option value="InProgress">In Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="Overdue">Overdue</option>
+        </select>
+        <input type="text" x-model="filter.search" placeholder="Search tasks..." class="form-input w-auto flex-1 min-w-48" />
+    </div>
+
+    <!-- Tasks Table -->
+    <div class="table-wrapper">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-100">
+                <tr>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Task Name</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Process</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Assignee</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Due Date</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Frequency</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Status</th>
+                    <th class="px-4 py-3 text-right font-medium text-gray-500">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+                <template x-for="task in filteredTasks" :key="task.id">
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-4 py-3">
+                            <button @@click="openDetail(task)" class="font-medium text-gray-900 hover:text-blue-600 text-left">
+                                <span x-text="task.name"></span>
+                            </button>
+                            <p class="text-xs text-gray-400 mt-0.5" x-text="task.description?.substring(0, 60) + (task.description?.length > 60 ? '...' : '')"></p>
+                        </td>
+                        <td class="px-4 py-3 text-gray-600" x-text="task.processName ?? '—'"></td>
+                        <td class="px-4 py-3 text-gray-600" x-text="task.assigneeName ?? '—'"></td>
+                        <td class="px-4 py-3">
+                            <span :class="task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Completed' ? 'text-red-600 font-medium' : 'text-gray-600'"
+                                  x-text="formatDate(task.dueDate)"></span>
+                        </td>
+                        <td class="px-4 py-3 text-gray-500 text-xs" x-text="task.frequency"></td>
+                        <td class="px-4 py-3">
+                            <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="statusBadge(task.status)" x-text="task.status"></span>
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <div class="flex items-center justify-end gap-1">
+                                <select @@change="updateStatus(task.id, $event.target.value)"
+                                        class="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600">
+                                    <option value="">Change status</option>
+                                    <option value="0">Open</option>
+                                    <option value="1">In Progress</option>
+                                    <option value="2">Complete</option>
+                                </select>
+                                <button @@click="deleteTask(task.id)" class="text-red-400 hover:text-red-600 p-1 ml-1">
+                                    <i class="fas fa-trash text-xs"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </template>
+                <tr x-show="filteredTasks.length === 0">
+                    <td colspan="7" class="px-4 py-10 text-center text-gray-400">No tasks found</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Create Task Modal -->
+    <div x-show="showCreate" class="modal-backdrop" x-transition>
+        <div class="modal p-6">
+            <h2 class="text-lg font-bold text-gray-900 mb-5">Create New Task</h2>
+            <form x-on:submit.prevent="createTask()">
+                <div class="space-y-4">
+                    <div>
+                        <label class="form-label">Task Name *</label>
+                        <input x-model="form.name" type="text" class="form-input" required />
+                    </div>
+                    <div>
+                        <label class="form-label">Description</label>
+                        <textarea x-model="form.description" class="form-input" rows="2"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label">Process *</label>
+                            <select x-model="form.processId" class="form-input" required>
+                                <option value="">Select process</option>
+                                <template x-for="p in processes" :key="p.id">
+                                    <option :value="p.id" x-text="p.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Assignee *</label>
+                            <select x-model="form.assigneeId" class="form-input" required>
+                                <option value="">Select user</option>
+                                <template x-for="u in users" :key="u.id">
+                                    <option :value="u.id" x-text="u.fullName + ' (' + u.role + ')'"></option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label">Due Date</label>
+                            <input x-model="form.dueDate" type="datetime-local" class="form-input" />
+                        </div>
+                        <div>
+                            <label class="form-label">Frequency</label>
+                            <select x-model="form.frequency" class="form-input">
+                                <option value="0">Once</option>
+                                <option value="1">Daily</option>
+                                <option value="2">Weekly</option>
+                                <option value="3">Monthly</option>
+                                <option value="4">Quarterly</option>
+                                <option value="5">Yearly</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label">Room (optional)</label>
+                            <select x-model="form.roomId" class="form-input">
+                                <option value="">No room</option>
+                                <template x-for="r in rooms" :key="r.id">
+                                    <option :value="r.id" x-text="r.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Device (optional)</label>
+                            <select x-model="form.deviceId" class="form-input">
+                                <option value="">No device</option>
+                                <template x-for="d in devices" :key="d.id">
+                                    <option :value="d.id" x-text="d.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @@click="showCreate = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Create Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Task Detail Modal -->
+    <div x-show="showDetail && selectedTask" class="modal-backdrop" x-transition>
+        <div class="modal p-6" style="max-width: 600px">
+            <div class="flex items-start justify-between mb-4">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900" x-text="selectedTask?.name"></h2>
+                    <span class="text-xs px-2 py-0.5 rounded-full font-medium mt-1 inline-block"
+                          :class="statusBadge(selectedTask?.status)" x-text="selectedTask?.status"></span>
+                </div>
+                <button @@click="showDetail = false" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="text-sm text-gray-600 space-y-2 mb-5">
+                <p x-show="selectedTask?.description" x-text="selectedTask?.description"></p>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div><span class="text-gray-400">Process:</span> <span x-text="selectedTask?.processName"></span></div>
+                    <div><span class="text-gray-400">Assignee:</span> <span x-text="selectedTask?.assigneeName"></span></div>
+                    <div><span class="text-gray-400">Due:</span> <span x-text="formatDate(selectedTask?.dueDate)"></span></div>
+                    <div><span class="text-gray-400">Frequency:</span> <span x-text="selectedTask?.frequency"></span></div>
+                    <div x-show="selectedTask?.roomName"><span class="text-gray-400">Room:</span> <span x-text="selectedTask?.roomName"></span></div>
+                    <div x-show="selectedTask?.deviceName"><span class="text-gray-400">Device:</span> <span x-text="selectedTask?.deviceName"></span></div>
+                </div>
+            </div>
+
+            <!-- Comments -->
+            <div class="border-t pt-4">
+                <h3 class="text-sm font-semibold text-gray-800 mb-3">Comments</h3>
+                <div class="space-y-3 max-h-40 overflow-y-auto mb-3">
+                    <template x-for="c in comments" :key="c.id">
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-xs font-medium text-gray-800" x-text="c.authorName"></span>
+                                <span class="text-xs text-gray-400" x-text="formatDateTime(c.createdAt)"></span>
+                            </div>
+                            <p class="text-sm text-gray-700" x-text="c.content"></p>
+                        </div>
+                    </template>
+                    <div x-show="comments.length === 0" class="text-xs text-gray-400 text-center py-2">No comments yet</div>
+                </div>
+                <div class="flex gap-2">
+                    <input x-model="newComment" type="text" placeholder="Add a comment..." class="form-input flex-1 text-xs" />
+                    <button @@click="addComment()" class="btn-primary text-xs px-3">Post</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function tasksApp() {
+    return {
+        tasks: [], processes: [], users: [], rooms: [], devices: [], comments: [],
+        filter: { status: '', search: '' },
+        showCreate: false, showDetail: false, selectedTask: null, newComment: '',
+        form: { name: '', description: '', processId: '', assigneeId: '', dueDate: '', frequency: '0', roomId: '', deviceId: '' },
+
+        get filteredTasks() {
+            return this.tasks.filter(t => {
+                const matchStatus = !this.filter.status || t.status.toLowerCase() === this.filter.status.toLowerCase();
+                const matchSearch = !this.filter.search || t.name.toLowerCase().includes(this.filter.search.toLowerCase());
+                return matchStatus && matchSearch;
+            });
+        },
+
+        async load() {
+            const params = this.filter.status ? `?status=${this.filter.status}` : '';
+            this.tasks = await apiRequest('GET', `/tasks${params}`);
+        },
+
+        async openCreate() {
+            this.processes = await apiRequest('GET', '/processes');
+            this.users = await apiRequest('GET', '/users');
+            this.rooms = await apiRequest('GET', '/rooms');
+            this.devices = await apiRequest('GET', '/devices');
+            this.form = { name: '', description: '', processId: '', assigneeId: '', dueDate: '', frequency: '0', roomId: '', deviceId: '' };
+            this.showCreate = true;
+        },
+
+        async createTask() {
+            try {
+                await apiRequest('POST', '/tasks', {
+                    name: this.form.name,
+                    description: this.form.description,
+                    processId: parseInt(this.form.processId),
+                    assigneeId: this.form.assigneeId,
+                    dueDate: this.form.dueDate || null,
+                    frequency: parseInt(this.form.frequency),
+                    roomId: this.form.roomId ? parseInt(this.form.roomId) : null,
+                    deviceId: this.form.deviceId ? parseInt(this.form.deviceId) : null,
+                    status: 0
+                });
+                this.showCreate = false;
+                await this.load();
+                showToast('Task created successfully');
+            } catch (e) { showToast('Failed to create task', 'error'); }
+        },
+
+        async openDetail(task) {
+            this.selectedTask = task;
+            this.comments = [];
+            this.newComment = '';
+            this.showDetail = true;
+            try {
+                const detail = await apiRequest('GET', `/tasks/${task.id}`);
+                this.comments = detail.comments ?? [];
+            } catch (e) {}
+        },
+
+        async addComment() {
+            if (!this.newComment.trim()) return;
+            try {
+                await apiRequest('POST', `/tasks/${this.selectedTask.id}/comments`, { content: this.newComment });
+                const detail = await apiRequest('GET', `/tasks/${this.selectedTask.id}`);
+                this.comments = detail.comments ?? [];
+                this.newComment = '';
+            } catch (e) { showToast('Failed to add comment', 'error'); }
+        },
+
+        async updateStatus(id, status) {
+            if (!status) return;
+            try {
+                await apiRequest('PATCH', `/tasks/${id}/status`, { status: parseInt(status) });
+                await this.load();
+                showToast('Status updated');
+            } catch (e) { showToast('Failed to update', 'error'); }
+        },
+
+        async deleteTask(id) {
+            if (!confirm('Delete this task?')) return;
+            try {
+                await apiRequest('DELETE', `/tasks/${id}`);
+                await this.load();
+                showToast('Task deleted');
+            } catch (e) { showToast('Failed to delete', 'error'); }
+        }
+    };
+}
+</script>
+}

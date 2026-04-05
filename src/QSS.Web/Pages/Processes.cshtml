@@ -1,0 +1,91 @@
+@page
+@model QSS.Web.Pages.ProcessesModel
+@{ ViewData["Title"] = "Processes"; }
+
+<div x-data="processesApp()" x-init="load()">
+    <div class="flex items-center justify-between mb-6">
+        <div><h1 class="text-2xl font-bold text-gray-900">Processes</h1>
+        <p class="text-sm text-gray-500 mt-0.5">Manage quality processes and categories</p></div>
+        <button @@click="showCreate = true" class="btn-primary"><i class="fas fa-plus"></i> New Process</button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <template x-for="p in processes" :key="p.id">
+            <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="categoryColor(p.category)">
+                        <i class="fas fa-project-diagram text-white text-sm"></i>
+                    </div>
+                    <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full" x-text="p.category"></span>
+                </div>
+                <h3 class="font-semibold text-gray-900 mb-1" x-text="p.name"></h3>
+                <p class="text-xs text-gray-500 mb-3" x-text="p.description || 'No description'"></p>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-gray-400" x-text="p.taskCount + ' tasks'"></span>
+                    <div class="flex gap-1">
+                        <button @@click="deleteProcess(p.id)" class="text-red-400 hover:text-red-600 text-xs p-1">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Create Modal -->
+    <div x-show="showCreate" class="modal-backdrop" x-transition>
+        <div class="modal p-6">
+            <h2 class="text-lg font-bold text-gray-900 mb-5">Create Process</h2>
+            <form x-on:submit.prevent="createProcess()">
+                <div class="space-y-4">
+                    <div><label class="form-label">Name *</label>
+                    <input x-model="form.name" type="text" class="form-input" required /></div>
+                    <div><label class="form-label">Description</label>
+                    <textarea x-model="form.description" class="form-input" rows="2"></textarea></div>
+                    <div><label class="form-label">Category</label>
+                    <select x-model="form.category" class="form-input">
+                        <option value="0">Hygiene</option>
+                        <option value="1">Maintenance</option>
+                        <option value="2">Administrative</option>
+                        <option value="3">Clinical</option>
+                        <option value="4">Safety</option>
+                        <option value="5">Training</option>
+                        <option value="6">Other</option>
+                    </select></div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @@click="showCreate = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function processesApp() {
+    return {
+        processes: [], showCreate: false,
+        form: { name: '', description: '', category: '0' },
+        async load() { this.processes = await apiRequest('GET', '/processes'); },
+        async createProcess() {
+            try {
+                await apiRequest('POST', '/processes', { name: this.form.name, description: this.form.description, category: parseInt(this.form.category) });
+                this.showCreate = false; await this.load(); showToast('Process created');
+            } catch(e) { showToast('Failed to create', 'error'); }
+        },
+        async deleteProcess(id) {
+            if(!confirm('Delete this process?')) return;
+            try { await apiRequest('DELETE', `/processes/${id}`); await this.load(); showToast('Deleted'); }
+            catch(e) { showToast('Failed to delete', 'error'); }
+        },
+        categoryColor(cat) {
+            const map = { Hygiene: 'bg-blue-500', Maintenance: 'bg-orange-500', Administrative: 'bg-purple-500',
+                Clinical: 'bg-green-500', Safety: 'bg-red-500', Training: 'bg-teal-500', Other: 'bg-gray-500' };
+            return map[cat] || 'bg-gray-500';
+        }
+    };
+}
+</script>
+}

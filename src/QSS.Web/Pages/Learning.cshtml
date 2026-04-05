@@ -1,0 +1,133 @@
+@page
+@model QSS.Web.Pages.LearningModel
+@{ ViewData["Title"] = "Learning"; }
+
+<div x-data="learningApp()" x-init="load()">
+    <div class="flex items-center justify-between mb-6">
+        <div><h1 class="text-2xl font-bold text-gray-900">Learning & Knowledge Base</h1>
+        <p class="text-sm text-gray-500">Protocols, manuals, and training materials</p></div>
+        <button @@click="showUpload = true" class="btn-primary"><i class="fas fa-upload"></i> Upload Material</button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <template x-for="m in materials" :key="m.id">
+            <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                         :class="fileIcon(m.fileType).bg">
+                        <i :class="fileIcon(m.fileType).icon + ' text-sm'"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="font-semibold text-gray-900 truncate" x-text="m.title"></h3>
+                        <p class="text-xs text-gray-400" x-text="m.category || 'General'"></p>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mb-4 line-clamp-2" x-text="m.description || 'No description'"></p>
+
+                <!-- Progress Bar -->
+                <div class="mb-3">
+                    <div class="flex justify-between text-xs text-gray-500 mb-1">
+                        <span>Progress</span>
+                        <span x-text="(m.userProgressPercent ?? 0) + '%'"></span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-1.5">
+                        <div class="h-1.5 rounded-full" :class="m.userCompleted ? 'bg-green-500' : 'bg-blue-500'"
+                             :style="`width: ${m.userProgressPercent ?? 0}%`"></div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-gray-400" x-text="'by ' + (m.uploadedByName || 'Unknown')"></span>
+                    <div class="flex gap-2">
+                        <a :href="m.fileUrl" target="_blank" class="text-xs text-blue-600 hover:underline">
+                            <i class="fas fa-download"></i> Download
+                        </a>
+                        <button x-show="!m.userCompleted" @@click="markComplete(m.id)"
+                                class="text-xs text-green-600 hover:underline">
+                            <i class="fas fa-check"></i> Complete
+                        </button>
+                        <span x-show="m.userCompleted" class="text-xs text-green-600">
+                            <i class="fas fa-check-circle"></i> Done
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Upload Modal -->
+    <div x-show="showUpload" class="modal-backdrop" x-transition>
+        <div class="modal p-6">
+            <h2 class="text-lg font-bold text-gray-900 mb-5">Upload Learning Material</h2>
+            <form x-on:submit.prevent="upload()" enctype="multipart/form-data" id="uploadForm">
+                <div class="space-y-4">
+                    <div><label class="form-label">Title *</label>
+                    <input x-model="form.title" type="text" class="form-input" required /></div>
+                    <div><label class="form-label">Description</label>
+                    <textarea x-model="form.description" class="form-input" rows="2"></textarea></div>
+                    <div><label class="form-label">Category</label>
+                    <input x-model="form.category" type="text" class="form-input" placeholder="e.g. Safety, Maintenance" /></div>
+                    <div><label class="form-label">File</label>
+                    <input type="file" id="fileInput" class="form-input" accept=".pdf,.doc,.docx,.mp4,.pptx" /></div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @@click="showUpload = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function learningApp() {
+    return {
+        materials: [], showUpload: false,
+        form: { title: '', description: '', category: '' },
+
+        async load() { this.materials = await apiRequest('GET', '/learning'); },
+
+        async upload() {
+            const token = getToken();
+            const formData = new FormData();
+            formData.append('title', this.form.title);
+            formData.append('description', this.form.description || '');
+            formData.append('category', this.form.category || '');
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput.files[0]) formData.append('file', fileInput.files[0]);
+
+            try {
+                await fetch(`${API_BASE}/api/learning/upload`, {
+                    method: 'POST',
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+                    body: formData
+                });
+                this.showUpload = false;
+                await this.load();
+                showToast('Material uploaded');
+            } catch(e) { showToast('Upload failed', 'error'); }
+        },
+
+        async markComplete(id) {
+            try {
+                await apiRequest('PATCH', `/learning/${id}/progress`, { progressPercent: 100 });
+                await this.load();
+                showToast('Marked as complete!', 'success');
+            } catch(e) { showToast('Failed', 'error'); }
+        },
+
+        fileIcon(type) {
+            const map = {
+                pdf: { bg: 'bg-red-100', icon: 'fas fa-file-pdf text-red-600' },
+                mp4: { bg: 'bg-purple-100', icon: 'fas fa-video text-purple-600' },
+                doc: { bg: 'bg-blue-100', icon: 'fas fa-file-word text-blue-600' },
+                docx: { bg: 'bg-blue-100', icon: 'fas fa-file-word text-blue-600' },
+                pptx: { bg: 'bg-orange-100', icon: 'fas fa-file-powerpoint text-orange-600' }
+            };
+            return map[type] || { bg: 'bg-gray-100', icon: 'fas fa-file text-gray-600' };
+        }
+    };
+}
+</script>
+}

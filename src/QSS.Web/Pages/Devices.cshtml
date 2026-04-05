@@ -1,0 +1,146 @@
+@page
+@model QSS.Web.Pages.DevicesModel
+@{ ViewData["Title"] = "Devices"; }
+
+<div x-data="devicesApp()" x-init="load()">
+    <div class="flex items-center justify-between mb-6">
+        <div><h1 class="text-2xl font-bold text-gray-900">Devices</h1>
+        <p class="text-sm text-gray-500">Equipment tracking with QR codes and maintenance schedules</p></div>
+        <button @@click="openCreate()" class="btn-primary"><i class="fas fa-plus"></i> Add Device</button>
+    </div>
+
+    <div class="table-wrapper">
+        <table class="w-full text-sm">
+            <thead class="bg-gray-50 border-b border-gray-100">
+                <tr>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Device</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Serial Number</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Room</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Next Maintenance</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">QR Code</th>
+                    <th class="px-4 py-3 text-right font-medium text-gray-500">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+                <template x-for="d in devices" :key="d.id">
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3">
+                            <p class="font-medium text-gray-900" x-text="d.name"></p>
+                            <p class="text-xs text-gray-400" x-text="(d.manufacturer || '') + ' ' + (d.model || '')"></p>
+                        </td>
+                        <td class="px-4 py-3 text-gray-600 font-mono text-xs" x-text="d.serialNumber || '—'"></td>
+                        <td class="px-4 py-3 text-gray-600" x-text="d.roomName || '—'"></td>
+                        <td class="px-4 py-3">
+                            <span :class="d.maintenanceOverdue ? 'text-red-600 font-semibold' : 'text-gray-600'"
+                                  x-text="formatDate(d.nextMaintenanceDue)"></span>
+                            <span x-show="d.maintenanceOverdue" class="ml-1 text-xs bg-red-100 text-red-600 px-1 rounded">OVERDUE</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <button @@click="showQr(d)" class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">
+                                <i class="fas fa-qrcode mr-1"></i>View QR
+                            </button>
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <button @@click="deleteDevice(d.id)" class="text-red-400 hover:text-red-600 p-1"><i class="fas fa-trash text-xs"></i></button>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div x-show="qrDevice" class="modal-backdrop" x-transition>
+        <div class="modal p-6 text-center" style="max-width:380px">
+            <h2 class="text-lg font-bold text-gray-900 mb-1" x-text="qrDevice?.name"></h2>
+            <p class="text-xs text-gray-400 mb-4" x-text="qrDevice?.serialNumber"></p>
+            <div x-show="qrBase64" class="flex justify-center mb-4">
+                <img :src="'data:image/png;base64,' + qrBase64" class="w-48 h-48" alt="QR Code" />
+            </div>
+            <p class="text-xs text-gray-400 mb-4">Scan this QR code to access device information</p>
+            <button @@click="qrDevice = null; qrBase64 = ''" class="btn-secondary mx-auto">Close</button>
+        </div>
+    </div>
+
+    <!-- Create Device Modal -->
+    <div x-show="showCreate" class="modal-backdrop" x-transition>
+        <div class="modal p-6">
+            <h2 class="text-lg font-bold text-gray-900 mb-5">Add Device</h2>
+            <form x-on:submit.prevent="createDevice()">
+                <div class="space-y-4">
+                    <div><label class="form-label">Device Name *</label>
+                    <input x-model="form.name" type="text" class="form-input" required /></div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="form-label">Manufacturer</label>
+                        <input x-model="form.manufacturer" type="text" class="form-input" /></div>
+                        <div><label class="form-label">Model</label>
+                        <input x-model="form.model" type="text" class="form-input" /></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="form-label">Serial Number</label>
+                        <input x-model="form.serialNumber" type="text" class="form-input" /></div>
+                        <div><label class="form-label">Room</label>
+                        <select x-model="form.roomId" class="form-input">
+                            <option value="">No room</option>
+                            <template x-for="r in rooms" :key="r.id">
+                                <option :value="r.id" x-text="r.name"></option>
+                            </template>
+                        </select></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="form-label">Purchase Date</label>
+                        <input x-model="form.purchaseDate" type="date" class="form-input" /></div>
+                        <div><label class="form-label">Next Maintenance</label>
+                        <input x-model="form.nextMaintenanceDue" type="date" class="form-input" /></div>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @@click="showCreate = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Add Device</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function devicesApp() {
+    return {
+        devices: [], rooms: [], showCreate: false, qrDevice: null, qrBase64: '',
+        form: { name: '', manufacturer: '', model: '', serialNumber: '', roomId: '', purchaseDate: '', nextMaintenanceDue: '' },
+        async load() {
+            this.devices = await apiRequest('GET', '/devices');
+            this.rooms = await apiRequest('GET', '/rooms');
+        },
+        async openCreate() { this.rooms = await apiRequest('GET', '/rooms'); this.showCreate = true; },
+        async createDevice() {
+            try {
+                await apiRequest('POST', '/devices', {
+                    name: this.form.name, manufacturer: this.form.manufacturer, model: this.form.model,
+                    serialNumber: this.form.serialNumber,
+                    roomId: this.form.roomId ? parseInt(this.form.roomId) : null,
+                    purchaseDate: this.form.purchaseDate || null,
+                    nextMaintenanceDue: this.form.nextMaintenanceDue || null
+                });
+                this.showCreate = false; await this.load(); showToast('Device added with QR code');
+            } catch(e) { showToast('Failed', 'error'); }
+        },
+        async showQr(device) {
+            this.qrDevice = device;
+            if (!device.qrCode) {
+                const res = await apiRequest('GET', `/devices/${device.id}/qrcode`);
+                this.qrBase64 = res.qrCode;
+            } else {
+                this.qrBase64 = device.qrCode;
+            }
+        },
+        async deleteDevice(id) {
+            if(!confirm('Delete device?')) return;
+            try { await apiRequest('DELETE', `/devices/${id}`); await this.load(); showToast('Deleted'); }
+            catch(e) { showToast('Failed', 'error'); }
+        }
+    };
+}
+</script>
+}
