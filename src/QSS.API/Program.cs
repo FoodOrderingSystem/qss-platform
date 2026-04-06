@@ -76,10 +76,13 @@ builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<QrCodeService>();
 
 // CORS for the Web frontend
+// In production, set Cors__AllowedOrigins__0=https://<web-service>.up.railway.app via Railway env vars
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? new[] { "http://localhost:5001", "https://localhost:5001" };
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowWebFrontend", policy =>
-        policy.WithOrigins("http://localhost:5001", "https://localhost:5001")
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials());
@@ -146,4 +149,6 @@ app.MapHub<NotificationHub>("/hubs/notifications");
 // Redirect root to swagger
 app.MapGet("/", () => Results.Redirect("/swagger"));
 
-app.Run();
+// Use Railway's dynamic PORT env var if present, otherwise default to 8080
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+app.Run($"http://+:{port}");
