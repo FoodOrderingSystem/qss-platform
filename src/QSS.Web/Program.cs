@@ -48,4 +48,6 @@ app.MapGet("/", context =>
     return Task.CompletedTask;
 });
 
-app.Run();
+// Use Railway's dynamic PORT env var if present, otherwise default to 8080
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+app.Run($"http://+:{port}");
