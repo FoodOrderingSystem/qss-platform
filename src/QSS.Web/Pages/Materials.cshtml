@@ -41,13 +41,13 @@
         </template>
     </div>
 
-    <div x-show="!loading && materials.length === 0" class="flex flex-col items-center justify-center py-16 text-center">
+    <div x-show="!loading && materials.length === 0" x-cloak class="flex flex-col items-center justify-center py-16 text-center">
         <i class="fas fa-boxes text-3xl text-gray-200 mb-3"></i>
         <p class="text-gray-400 font-medium">No materials in inventory</p>
         <p class="text-xs text-gray-300 mt-1">Click "Add Material" to track your first item</p>
     </div>
 
-    <div x-show="!loading && materials.length > 0" class="table-wrapper">
+    <div x-show="!loading && materials.length > 0" x-cloak class="table-wrapper">
         <table class="w-full text-sm">
             <thead class="bg-gray-50 border-b border-gray-100">
                 <tr>
@@ -97,7 +97,7 @@
         </table>
     </div><!-- end !loading && materials.length > 0 -->
 
-    <div x-show="showCreate" class="modal-backdrop" x-transition>
+    <div x-show="showCreate" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showCreate = false">
         <div class="modal p-6">
             <div class="flex items-center justify-between mb-5">
                 <h2 class="text-lg font-bold text-gray-900">Add Material</h2>

@@ -94,3 +94,14 @@ function statusBadge(status) {
     };
     return map[status] || 'bg-gray-100 text-gray-700';
 }
+
+// Scroll lock — prevents background scroll when an overlay is open.
+// Targets the <main> element used by the layout's scrollable region.
+function lockScroll() {
+    const main = document.querySelector('main');
+    if (main) main.style.overflow = 'hidden';
+}
+function unlockScroll() {
+    const main = document.querySelector('main');
+    if (main) main.style.overflow = '';
+}

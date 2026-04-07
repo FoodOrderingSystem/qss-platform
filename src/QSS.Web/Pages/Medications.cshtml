@@ -21,13 +21,13 @@
         </template>
     </div>
 
-    <div x-show="!loading && medications.length === 0" class="flex flex-col items-center justify-center py-16 text-center">
+    <div x-show="!loading && medications.length === 0" x-cloak class="flex flex-col items-center justify-center py-16 text-center">
         <i class="fas fa-pills text-3xl text-gray-200 mb-3"></i>
         <p class="text-gray-400 font-medium">No medications tracked</p>
         <p class="text-xs text-gray-300 mt-1">Click "Add Medication" to start tracking</p>
     </div>
 
-    <div x-show="!loading && medications.length > 0" class="table-wrapper">
+    <div x-show="!loading && medications.length > 0" x-cloak class="table-wrapper">
         <table class="w-full text-sm">
             <thead class="bg-gray-50 border-b border-gray-100">
                 <tr>
@@ -73,7 +73,7 @@
     </div><!-- end !loading && medications.length > 0 -->
 
     <!-- Create Modal -->
-    <div x-show="showCreate" class="modal-backdrop" x-transition>
+    <div x-show="showCreate" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showCreate = false">
         <div class="modal p-6">
             <h2 class="text-lg font-bold text-gray-900 mb-5">Add Medication</h2>
             <form x-on:submit.prevent="createMed()">
@@ -110,7 +110,7 @@
     </div>
 
     <!-- Log Usage Modal -->
-    <div x-show="showUsage" class="modal-backdrop" x-transition>
+    <div x-show="showUsage" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showUsage = false">
         <div class="modal p-6" style="max-width:400px">
             <h2 class="text-lg font-bold text-gray-900 mb-2">Log Usage</h2>
             <p class="text-sm text-gray-600 mb-5" x-text="selectedMed?.name"></p>
