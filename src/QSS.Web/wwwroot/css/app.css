@@ -1,54 +1,162 @@
 /* QSS Platform Custom Styles */
 [x-cloak] { display: none !important; }
 
+/* ─── Stat card ────────────────────────────────────────────────────────────── */
 .stat-card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4;
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 2px 0 rgba(0,0,0,.05);
+    border: 1px solid #f3f4f6;
+    padding: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
-.badge-open { @apply bg-blue-100 text-blue-700; }
-.badge-inprogress { @apply bg-yellow-100 text-yellow-700; }
-.badge-completed { @apply bg-green-100 text-green-700; }
-.badge-overdue { @apply bg-red-100 text-red-700; }
+/* ─── Status badges ─────────────────────────────────────────────────────────── */
+.badge-open       { background-color: #dbeafe; color: #1d4ed8; }
+.badge-inprogress { background-color: #fef9c3; color: #a16207; }
+.badge-completed  { background-color: #dcfce7; color: #15803d; }
+.badge-overdue    { background-color: #fee2e2; color: #b91c1c; }
 
+/* ─── Buttons ──────────────────────────────────────────────────────────────── */
 .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors inline-flex items-center gap-2;
+    background-color: #2563eb;
+    color: #ffffff;
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.15s ease;
+    text-decoration: none;
 }
+.btn-primary:hover:not(:disabled) { background-color: #1d4ed8; }
+.btn-primary:disabled              { opacity: 0.6; cursor: not-allowed; }
 
 .btn-secondary {
-    @apply bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors inline-flex items-center gap-2;
+    background-color: #f3f4f6;
+    color: #374151;
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.15s ease;
 }
+.btn-secondary:hover { background-color: #e5e7eb; }
 
 .btn-danger {
-    @apply bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors inline-flex items-center gap-2;
+    background-color: #dc2626;
+    color: #ffffff;
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.15s ease;
 }
+.btn-danger:hover { background-color: #b91c1c; }
 
+/* ─── Form controls ─────────────────────────────────────────────────────────── */
 .form-input {
-    @apply w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    outline: none;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    background-color: #ffffff;
+}
+.form-input:focus {
+    border-color: transparent;
+    box-shadow: 0 0 0 2px #3b82f6;
 }
 
 .form-label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.25rem;
 }
 
+/* ─── Table wrapper ─────────────────────────────────────────────────────────── */
 .table-wrapper {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden;
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 2px 0 rgba(0,0,0,.05);
+    border: 1px solid #f3f4f6;
+    overflow: hidden;
 }
 
+/* ─── Modal overlay ─────────────────────────────────────────────────────────── */
 .modal-backdrop {
-    @apply fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
 }
 
 .modal {
-    @apply bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-screen overflow-y-auto z-50;
+    background-color: #ffffff;
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,.25);
+    width: 100%;
+    max-width: 32rem;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    z-index: 50;
 }
 
-/* QSS Score Ring */
+/* Modal that must appear above a slide-over (z-50) */
+.modal-backdrop-top {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.modal-top {
+    background-color: #ffffff;
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,.35);
+    width: 100%;
+    max-width: 32rem;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    z-index: 70;
+}
+
+/* ─── QSS Score ring ────────────────────────────────────────────────────────── */
 .qss-score-ring {
     width: 120px;
     height: 120px;
 }
 
-/* Sidebar transitions */
+/* ─── Sidebar ───────────────────────────────────────────────────────────────── */
 aside {
     transition: width 0.3s ease;
 }

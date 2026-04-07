@@ -182,38 +182,9 @@
 
                         <!-- Log maintenance button -->
                         <div>
-                            <button @@click="showAddHistory = !showAddHistory" class="w-full border border-dashed border-gray-300 rounded-xl py-2.5 text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
-                                <i class="fas fa-plus mr-2"></i>Log Maintenance Event
+                            <button @@click="openLogMaintenance()" class="btn-primary text-sm w-full justify-center">
+                                <i class="fas fa-plus"></i>Log Maintenance Event
                             </button>
-                            <div x-show="showAddHistory" x-transition class="mt-3 bg-gray-50 rounded-xl p-4 space-y-3">
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="form-label">Event Type</label>
-                                        <select x-model="historyForm.eventType" class="form-input text-sm">
-                                            <option value="Maintenance">Maintenance</option>
-                                            <option value="Repair">Repair</option>
-                                            <option value="Inspection">Inspection</option>
-                                            <option value="Note">Note</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="form-label">Date</label>
-                                        <input x-model="historyForm.eventDate" type="date" class="form-input text-sm" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="form-label">Title</label>
-                                    <input x-model="historyForm.title" type="text" class="form-input text-sm" placeholder="e.g. Annual service completed" />
-                                </div>
-                                <div>
-                                    <label class="form-label">Notes (optional)</label>
-                                    <textarea x-model="historyForm.notes" class="form-input text-sm" rows="2" placeholder="Any relevant details..."></textarea>
-                                </div>
-                                <div class="flex justify-end gap-2">
-                                    <button @@click="showAddHistory = false" class="btn-secondary text-xs">Cancel</button>
-                                    <button @@click="addHistoryEntry()" class="btn-primary text-xs" :disabled="!historyForm.title">Log Event</button>
-                                </div>
-                            </div>
                         </div>
 
                         <!-- Tabs: Tasks and History -->
@@ -236,8 +207,9 @@
                                     <p class="text-xs">No tasks assigned to this device</p>
                                 </div>
                                 <template x-for="t in selectedDevice.tasks" :key="t.id">
-                                    <div class="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
-                                         :class="t.isOverdue ? 'bg-red-50' : 'bg-gray-50 hover:bg-gray-100'">
+                                    <div class="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors cursor-pointer"
+                                         :class="t.isOverdue ? 'bg-red-50 hover:bg-red-100' : 'bg-gray-50 hover:bg-blue-50'"
+                                         @@click="openTask(t.id)">
                                         <div class="w-2 h-2 rounded-full flex-shrink-0" :class="taskStatusDot(t.status)"></div>
                                         <div class="flex-1 min-w-0">
                                             <p class="text-sm font-medium text-gray-800 truncate" x-text="t.name"></p>
@@ -246,6 +218,7 @@
                                         <div class="flex-shrink-0 flex items-center gap-2">
                                             <span x-show="t.isOverdue" class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">OVERDUE</span>
                                             <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="taskStatusBadge(t.status)" x-text="t.status"></span>
+                                            <span class="text-xs text-blue-500 font-medium ml-1">Open →</span>
                                         </div>
                                     </div>
                                 </template>
@@ -327,15 +300,57 @@
         </div>
     </div>
 
+    <!-- Log Maintenance Modal (z-60, above device detail slide-over at z-50) -->
+    <div x-show="showLogMaintenance" x-cloak class="modal-backdrop-top" x-transition @@keydown.escape.window="showLogMaintenance = false">
+        <div class="modal-top p-6" style="max-width:480px">
+            <div class="flex items-center justify-between mb-5">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900">Log Maintenance Event</h2>
+                    <p class="text-xs text-gray-400 mt-0.5" x-text="'Recording event for: ' + (selectedDevice?.name ?? '')"></p>
+                </div>
+                <button @@click="showLogMaintenance = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="form-label">Event Type</label>
+                        <select x-model="historyForm.eventType" class="form-input">
+                            <option value="Maintenance">Maintenance</option>
+                            <option value="Repair">Repair</option>
+                            <option value="Inspection">Inspection</option>
+                            <option value="Note">Note</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Date</label>
+                        <input x-model="historyForm.eventDate" type="date" class="form-input" />
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Title <span class="text-red-500">*</span></label>
+                    <input x-model="historyForm.title" type="text" class="form-input" placeholder="e.g. Annual service completed" />
+                </div>
+                <div>
+                    <label class="form-label">Notes (optional)</label>
+                    <textarea x-model="historyForm.notes" class="form-input" rows="3" placeholder="Any relevant details..."></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button @@click="showLogMaintenance = false" class="btn-secondary">Cancel</button>
+                <button @@click="addHistoryEntry()" class="btn-primary" :disabled="!historyForm.title || saving" x-text="saving ? 'Logging...' : 'Log Event'"></button>
+            </div>
+        </div>
+    </div>
+
     <!-- Create Device Modal -->
-    <div x-show="showCreate" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showCreate = false">
+    <div x-show="showCreate" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showCreate = false; unlockScroll()">
         <div class="modal p-6" style="max-width:520px">
             <div class="flex items-center justify-between mb-5">
                 <div>
                     <h2 class="text-lg font-bold text-gray-900">Add Device</h2>
                     <p class="text-xs text-gray-400 mt-0.5">A QR code will be generated automatically</p>
                 </div>
-                <button @@click="showCreate = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                <button @@click="showCreate = false; unlockScroll()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
             </div>
             <form x-on:submit.prevent="createDevice()">
                 <div class="space-y-4">
@@ -384,7 +399,7 @@
                     </div>
                 </div>
                 <div class="flex justify-end gap-3 mt-6">
-                    <button type="button" @@click="showCreate = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @@click="showCreate = false; unlockScroll()" class="btn-secondary">Cancel</button>
                     <button type="submit" class="btn-primary" :disabled="saving" x-text="saving ? 'Adding...' : 'Add Device'"></button>
                 </div>
             </form>
@@ -392,14 +407,14 @@
     </div>
 
     <!-- Edit Device Modal -->
-    <div x-show="showEdit" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showEdit = false">
+    <div x-show="showEdit" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showEdit = false; unlockScroll()">
         <div class="modal p-6" style="max-width:520px">
             <div class="flex items-center justify-between mb-5">
                 <div>
                     <h2 class="text-lg font-bold text-gray-900">Edit Device</h2>
                     <p class="text-xs text-gray-400 mt-0.5">Update device details and maintenance schedule</p>
                 </div>
-                <button @@click="showEdit = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                <button @@click="showEdit = false; unlockScroll()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
             </div>
             <form x-on:submit.prevent="updateDevice()">
                 <div class="space-y-4">
@@ -449,7 +464,7 @@
                     </div>
                 </div>
                 <div class="flex justify-end gap-3 mt-6">
-                    <button type="button" @@click="showEdit = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @@click="showEdit = false; unlockScroll()" class="btn-secondary">Cancel</button>
                     <button type="submit" class="btn-primary" :disabled="saving" x-text="saving ? 'Saving...' : 'Save Changes'"></button>
                 </div>
             </form>
@@ -462,8 +477,8 @@
 function devicesApp() {
     return {
         devices: [], rooms: [],
-        loading: true, saving: false,
-        showCreate: false, showEdit: false, showDetail: false, showAddHistory: false,
+        loading: true, saving: false, _initialLoad: true,
+        showCreate: false, showEdit: false, showDetail: false, showLogMaintenance: false,
         selectedDevice: null, detailLoading: false, activeTab: 'tasks',
         qrDevice: null, qrBase64: '',
         form: { name: '', description: '', manufacturer: '', model: '', serialNumber: '', roomId: '', purchaseDate: '', nextMaintenanceDue: '' },
@@ -477,8 +492,22 @@ function devicesApp() {
                     apiRequest('GET', '/devices'),
                     apiRequest('GET', '/rooms').catch(() => [])
                 ]);
+                if (this._initialLoad) {
+                    this._initialLoad = false;
+                    const openId = new URLSearchParams(window.location.search).get('open');
+                    if (openId) await this.openDetail(parseInt(openId));
+                }
             } catch(e) { showToast('Failed to load devices', 'error'); }
             finally { this.loading = false; }
+        },
+
+        openTask(taskId) {
+            window.location.href = '/Tasks?open=' + taskId;
+        },
+
+        openLogMaintenance() {
+            this.historyForm = { eventType: 'Maintenance', title: '', notes: '', eventDate: new Date().toISOString().slice(0, 10) };
+            this.showLogMaintenance = true;
         },
 
         openCreate() {
@@ -509,7 +538,7 @@ function devicesApp() {
             this.detailLoading = true;
             this.selectedDevice = null;
             this.activeTab = 'tasks';
-            this.showAddHistory = false;
+            this.showLogMaintenance = false;
             lockScroll();
             try {
                 this.selectedDevice = await apiRequest('GET', `/devices/${deviceId}`);
@@ -584,6 +613,7 @@ function devicesApp() {
 
         async addHistoryEntry() {
             if (!this.historyForm.title.trim()) return;
+            this.saving = true;
             try {
                 await apiRequest('POST', `/devices/${this.selectedDevice.id}/history`, {
                     eventType: this.historyForm.eventType,
@@ -593,10 +623,11 @@ function devicesApp() {
                 });
                 this.selectedDevice = await apiRequest('GET', `/devices/${this.selectedDevice.id}`);
                 this.historyForm = { eventType: 'Maintenance', title: '', notes: '', eventDate: '' };
-                this.showAddHistory = false;
+                this.showLogMaintenance = false;
                 this.activeTab = 'history';
                 showToast('History entry logged');
             } catch(e) { showToast('Failed to log history entry', 'error'); }
+            finally { this.saving = false; }
         },
 
         async deleteDevice(id) {
