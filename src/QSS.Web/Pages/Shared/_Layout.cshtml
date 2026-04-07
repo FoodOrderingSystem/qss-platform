@@ -13,7 +13,7 @@
 </head>
 <body class="h-full font-sans antialiased"
       x-data="{ sidebarOpen: window.innerWidth >= 1024, notifOpen: false }"
-      @@keydown.escape.window="if (window.innerWidth < 1024) sidebarOpen = false">
+      @@keydown.escape.window="if (window.innerWidth &lt; 1024) sidebarOpen = false">
 
 @if (User.Identity?.IsAuthenticated == true)
 {
@@ -66,7 +66,7 @@
                 {
                     var isActive = currentPath.StartsWith(item.Href);
                     <a href="@item.Href"
-                       @@click="if (window.innerWidth < 1024) sidebarOpen = false"
+                       @@click="if (window.innerWidth &lt; 1024) sidebarOpen = false"
                        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors @(isActive ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white")">
                         <i class="@item.Icon w-5 text-center flex-shrink-0"></i>
                         <span class="whitespace-nowrap overflow-hidden transition-all"
