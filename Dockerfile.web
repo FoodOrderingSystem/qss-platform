@@ -15,6 +15,8 @@ RUN dotnet publish "QSS.Web.csproj" -c Release -o /app/publish /p:UseAppHost=fal
 FROM base AS final
 WORKDIR /app
 EXPOSE 8080
+# /app/keys stores Data Protection keys — mount a Railway volume here to survive redeploys
+RUN mkdir -p /app/keys
 COPY --from=build /app/publish .
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENTRYPOINT ["dotnet", "QSS.Web.dll"]

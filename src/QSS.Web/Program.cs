@@ -1,6 +1,15 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Persist Data Protection keys to the volume so cookie auth survives redeploys.
+// Mount a Railway volume at /app/keys (or set DataProtectionKeysPath env var to override).
+var keysPath = Environment.GetEnvironmentVariable("DataProtectionKeysPath") ?? "/app/keys";
+Directory.CreateDirectory(keysPath);
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(keysPath))
+    .SetApplicationName("QSSPlatform");
 
 builder.Services.AddRazorPages();
 builder.Services.AddHttpContextAccessor();
