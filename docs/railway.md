@@ -4,6 +4,21 @@
 
 Two Railway services in the same environment:
 
+> **Important — Config-as-Code in a monorepo:**
+> Railway's `railway.toml` is **single-service scoped**. A single root `railway.toml` does NOT automatically route to the right Dockerfile for each service — it applies to whichever service you assign it to in the dashboard.
+>
+> This repo uses **two separate config files** that must be assigned explicitly in the Railway dashboard:
+>
+> | File | Assign to service | Builds |
+> |------|-------------------|--------|
+> | `railway.api.toml` | `qss-api` | `Dockerfile.api` → runs `QSS.API.dll` |
+> | `railway.web.toml` | `qss-web` | `Dockerfile.web` → runs `QSS.Web.dll` |
+>
+> In each service: **Settings → Config as Code → Config File Path** → enter the path above.
+> If this is misconfigured (e.g. `qss-web` points to `railway.api.toml`), the web service will run the API binary and `/Login` will return 404.
+
+Two Railway services in the same environment:
+
 | Service | Source | Internal port | Public URL |
 |---------|--------|---------------|------------|
 | `qss-api` | `Dockerfile.api` | 8080 | `https://qss-api-production.up.railway.app` |
@@ -163,11 +178,18 @@ Add and mount the `qss-web-keys` volume at `/app/keys` so Data Protection keys a
 The correct login URL is `https://qss-web-production.up.railway.app/Login` (capital L, matches `Pages/Login.cshtml`).
 ASP.NET Core routing is case-insensitive so `/login` also works.
 
-If you are seeing a 404:
-- Confirm the web container is actually running (Railway → `qss-web` → Deployments shows green).
-- Confirm `ASPNETCORE_ENVIRONMENT=Production` is set and no other conflicting env vars are present.
-- Do **not** set `ASPNETCORE_URLS` — the app reads `PORT` automatically.
-- Try the root URL `https://qss-web-production.up.railway.app/` — it should redirect to `/Dashboard` which in turn redirects to `/Login` if unauthenticated.
+If you are seeing a 404, first check the Railway config assignment:
+
+1. **Wrong Railway config file assigned (most common root cause)** — If `qss-web` has `railway.api.toml` (or the old root `railway.toml`) assigned, the service builds the API image and runs `QSS.API.dll`. The API has no `/Login` page, so every Razor Pages route returns 404.
+   - Go to Railway → `qss-web` → Settings → Config as Code
+   - Set Config File Path to `railway.web.toml`
+   - Redeploy
+   - After the fix, confirm the web container entrypoint is `dotnet QSS.Web.dll` in the build logs.
+
+2. Confirm the web container is actually running (Railway → `qss-web` → Deployments shows green).
+3. Confirm `ASPNETCORE_ENVIRONMENT=Production` is set and no other conflicting env vars are present.
+4. Do **not** set `ASPNETCORE_URLS` — the app reads `PORT` automatically.
+5. Try the root URL `https://qss-web-production.up.railway.app/` — it should redirect to `/Dashboard` which in turn redirects to `/Login` if unauthenticated.
 
 ### Login page says "Unable to connect to the API server"
 - `ApiBaseUrl` in `qss-web` env vars is wrong. Correct value: `https://qss-api-production.up.railway.app` (no `:8080`).
