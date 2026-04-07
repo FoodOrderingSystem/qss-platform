@@ -21,4 +21,5 @@ public class Device : BaseEntity
     // Navigation
     public Room? Room { get; set; }
     public ICollection<QssTask> Tasks { get; set; } = new List<QssTask>();
+    public ICollection<DeviceHistory> History { get; set; } = new List<DeviceHistory>();
 }

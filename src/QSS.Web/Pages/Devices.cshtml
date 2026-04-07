@@ -4,8 +4,10 @@
 
 <div x-data="devicesApp()" x-init="load()">
     <div class="flex items-center justify-between mb-6">
-        <div><h1 class="text-2xl font-bold text-gray-900">Devices</h1>
-        <p class="text-sm text-gray-500">Equipment tracking with QR codes and maintenance schedules</p></div>
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Devices</h1>
+            <p class="text-sm text-gray-500">Equipment tracking with QR codes, maintenance schedules, and task history</p>
+        </div>
         <button @@click="openCreate()" class="btn-primary"><i class="fas fa-plus"></i> Add Device</button>
     </div>
 
@@ -28,9 +30,7 @@
         </div>
         <p class="text-gray-500 font-medium mb-1">No devices yet</p>
         <p class="text-xs text-gray-300 mb-4">Add your first device to start tracking maintenance and QR codes</p>
-        <button @@click="openCreate()" class="btn-primary text-sm">
-            <i class="fas fa-plus"></i> Add Device
-        </button>
+        <button @@click="openCreate()" class="btn-primary text-sm"><i class="fas fa-plus"></i> Add Device</button>
     </div>
 
     <!-- Devices table -->
@@ -49,26 +49,35 @@
             <tbody class="divide-y divide-gray-50">
                 <template x-for="d in devices" :key="d.id">
                     <tr class="hover:bg-gray-50 cursor-pointer transition-colors"
-                        :class="d.maintenanceOverdue ? 'bg-red-50 hover:bg-red-100' : ''"
-                        @@click="openDetail(d)">
+                        :class="d.maintenanceOverdue ? 'bg-red-50/50' : ''"
+                        @@click="openDetail(d.id)">
                         <td class="px-4 py-3">
                             <p class="font-medium text-gray-900" x-text="d.name"></p>
-                            <p class="text-xs text-gray-400" x-text="(d.manufacturer || '') + (d.model ? ' · ' + d.model : '')"></p>
+                            <p class="text-xs text-gray-400" x-text="[d.manufacturer, d.model].filter(Boolean).join(' · ') || 'No model info'"></p>
                         </td>
-                        <td class="px-4 py-3 text-gray-600 font-mono text-xs" x-text="d.serialNumber || '—'"></td>
-                        <td class="px-4 py-3 text-gray-600" x-text="d.roomName || '—'"></td>
+                        <td class="px-4 py-3 text-gray-500 font-mono text-xs" x-text="d.serialNumber || '—'"></td>
+                        <td class="px-4 py-3 text-gray-600 text-xs" x-text="d.roomName || '—'"></td>
                         <td class="px-4 py-3">
-                            <span :class="d.maintenanceOverdue ? 'text-red-600 font-semibold' : 'text-gray-600'"
-                                  x-text="formatDate(d.nextMaintenanceDue)"></span>
-                            <span x-show="d.maintenanceOverdue" class="ml-1 text-xs bg-red-100 text-red-600 px-1 rounded">OVERDUE</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs" :class="d.maintenanceOverdue ? 'text-red-600 font-semibold' : 'text-gray-600'"
+                                      x-text="formatDate(d.nextMaintenanceDue)"></span>
+                                <span x-show="d.maintenanceOverdue" class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">OVERDUE</span>
+                            </div>
                         </td>
                         <td class="px-4 py-3" @@click.stop>
-                            <button @@click="showQr(d)" class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">
+                            <button @@click="showQr(d)" class="text-xs bg-blue-100 text-blue-700 px-2.5 py-1.5 rounded-lg hover:bg-blue-200 transition-colors font-medium">
                                 <i class="fas fa-qrcode mr-1"></i>View QR
                             </button>
                         </td>
                         <td class="px-4 py-3 text-right" @@click.stop>
-                            <button @@click="deleteDevice(d.id)" class="text-red-400 hover:text-red-600 p-1" title="Delete device"><i class="fas fa-trash text-xs"></i></button>
+                            <div class="flex items-center justify-end gap-1">
+                                <button @@click="openEdit(d.id)" class="text-gray-400 hover:text-blue-600 p-1.5 rounded hover:bg-blue-50 transition-colors" title="Edit">
+                                    <i class="fas fa-pencil text-xs"></i>
+                                </button>
+                                <button @@click="deleteDevice(d.id)" class="text-red-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition-colors" title="Delete">
+                                    <i class="fas fa-trash text-xs"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 </template>
@@ -76,119 +85,369 @@
         </table>
     </div>
 
-    <!-- Device Detail Modal -->
-    <div x-show="showDetail && selectedDevice" class="modal-backdrop" x-transition>
-        <div class="modal p-6" style="max-width:520px">
-            <div class="flex items-start justify-between mb-4">
-                <div>
-                    <h2 class="text-lg font-bold text-gray-900" x-text="selectedDevice?.name"></h2>
-                    <p class="text-sm text-gray-400" x-text="[selectedDevice?.manufacturer, selectedDevice?.model].filter(Boolean).join(' · ') || 'No manufacturer info'"></p>
-                </div>
-                <button @@click="showDetail = false" class="text-gray-400 hover:text-gray-600 p-1">
-                    <i class="fas fa-times"></i>
-                </button>
+    <!-- Device Detail Slide-over -->
+    <div x-show="showDetail" class="fixed inset-0 z-50 overflow-hidden">
+        <div class="absolute inset-0 bg-gray-900/40" @@click="showDetail = false"></div>
+        <div class="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl flex flex-col"
+             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+             x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full">
+
+            <div x-show="detailLoading" class="flex-1 flex items-center justify-center">
+                <div class="text-center text-gray-400"><i class="fas fa-spinner fa-spin text-2xl mb-2"></i><p class="text-sm">Loading...</p></div>
             </div>
 
-            <div class="grid grid-cols-2 gap-3 mb-5">
-                <div class="bg-gray-50 rounded-xl p-3">
-                    <p class="text-xs text-gray-400 mb-1">Serial Number</p>
-                    <p class="text-sm font-mono font-medium text-gray-800" x-text="selectedDevice?.serialNumber || '—'"></p>
-                </div>
-                <div class="bg-gray-50 rounded-xl p-3">
-                    <p class="text-xs text-gray-400 mb-1">Location</p>
-                    <p class="text-sm font-medium text-gray-800" x-text="selectedDevice?.roomName || 'No room assigned'"></p>
-                </div>
-                <div class="rounded-xl p-3" :class="selectedDevice?.maintenanceOverdue ? 'bg-red-50' : 'bg-gray-50'">
-                    <p class="text-xs text-gray-400 mb-1">Next Maintenance</p>
-                    <div class="flex items-center gap-2">
-                        <p class="text-sm font-medium" :class="selectedDevice?.maintenanceOverdue ? 'text-red-600' : 'text-gray-800'"
-                           x-text="formatDate(selectedDevice?.nextMaintenanceDue)"></p>
-                        <span x-show="selectedDevice?.maintenanceOverdue" class="text-xs bg-red-100 text-red-600 px-1 rounded">OVERDUE</span>
+            <template x-if="!detailLoading && selectedDevice">
+                <div class="flex flex-col h-full">
+                    <!-- Header -->
+                    <div class="flex items-start justify-between p-6 border-b border-gray-100">
+                        <div class="flex items-start gap-3">
+                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-laptop-medical text-blue-600"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h2 class="text-lg font-bold text-gray-900" x-text="selectedDevice.name"></h2>
+                                    <span x-show="selectedDevice.maintenanceOverdue" class="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-medium">Maintenance Overdue</span>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-0.5" x-text="[selectedDevice.manufacturer, selectedDevice.model].filter(Boolean).join(' · ') || 'No model info'"></p>
+                            </div>
+                        </div>
+                        <button @@click="showDetail = false" class="text-gray-400 hover:text-gray-600 p-1">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto p-6 space-y-5">
+                        <!-- Metadata grid -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-gray-50 rounded-xl p-3">
+                                <p class="text-xs text-gray-400 mb-1">Serial Number</p>
+                                <p class="text-sm font-mono font-medium text-gray-800" x-text="selectedDevice.serialNumber || '—'"></p>
+                            </div>
+                            <div class="bg-gray-50 rounded-xl p-3">
+                                <p class="text-xs text-gray-400 mb-1">Location</p>
+                                <p class="text-sm font-medium text-gray-800" x-text="selectedDevice.roomName || 'No room assigned'"></p>
+                            </div>
+                            <div class="rounded-xl p-3" :class="selectedDevice.maintenanceOverdue ? 'bg-red-50' : 'bg-gray-50'">
+                                <p class="text-xs text-gray-400 mb-1">Next Maintenance</p>
+                                <p class="text-sm font-medium" :class="selectedDevice.maintenanceOverdue ? 'text-red-600' : 'text-gray-800'"
+                                   x-text="formatDate(selectedDevice.nextMaintenanceDue)"></p>
+                            </div>
+                            <div class="bg-gray-50 rounded-xl p-3">
+                                <p class="text-xs text-gray-400 mb-1">Last Maintenance</p>
+                                <p class="text-sm font-medium text-gray-800" x-text="formatDate(selectedDevice.lastMaintenanceDate)"></p>
+                            </div>
+                            <div class="bg-gray-50 rounded-xl p-3">
+                                <p class="text-xs text-gray-400 mb-1">Purchase Date</p>
+                                <p class="text-sm font-medium text-gray-800" x-text="formatDate(selectedDevice.purchaseDate)"></p>
+                            </div>
+                            <div class="bg-gray-50 rounded-xl p-3">
+                                <p class="text-xs text-gray-400 mb-1">Linked Tasks</p>
+                                <p class="text-sm font-medium text-gray-800" x-text="(selectedDevice.tasks?.length ?? 0) + ' task(s)'"></p>
+                            </div>
+                        </div>
+
+                        <!-- QR Code -->
+                        <div class="border border-blue-100 rounded-xl p-4 bg-blue-50">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <h3 class="text-sm font-semibold text-blue-800">Device QR Code</h3>
+                                    <p class="text-xs text-blue-500 mt-0.5">Scan to access this device's profile</p>
+                                </div>
+                                <button @@click="showQr(selectedDevice)"
+                                        class="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors">
+                                    <i class="fas fa-expand-alt mr-1"></i>View Full QR
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <template x-if="selectedDevice.qrCode">
+                                    <img :src="'data:image/png;base64,' + selectedDevice.qrCode" class="w-20 h-20 rounded-lg border border-blue-200" alt="QR Code" />
+                                </template>
+                                <template x-if="!selectedDevice.qrCode">
+                                    <div class="w-20 h-20 bg-blue-100 rounded-lg flex items-center justify-center border border-blue-200 cursor-pointer"
+                                         @@click="loadQrForDetail()">
+                                        <i class="fas fa-qrcode text-2xl text-blue-400"></i>
+                                    </div>
+                                </template>
+                                <div>
+                                    <p class="text-xs text-blue-700 font-medium">Device ID: #<span x-text="selectedDevice.id"></span></p>
+                                    <p class="text-xs text-blue-500 mt-1">Point camera at QR code to open device profile</p>
+                                    <p class="text-xs text-blue-400 mt-1 break-all" x-text="'qss.dental/devices/' + selectedDevice.id"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Log maintenance button -->
+                        <div>
+                            <button @@click="showAddHistory = !showAddHistory" class="w-full border border-dashed border-gray-300 rounded-xl py-2.5 text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                                <i class="fas fa-plus mr-2"></i>Log Maintenance Event
+                            </button>
+                            <div x-show="showAddHistory" x-transition class="mt-3 bg-gray-50 rounded-xl p-4 space-y-3">
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="form-label">Event Type</label>
+                                        <select x-model="historyForm.eventType" class="form-input text-sm">
+                                            <option value="Maintenance">Maintenance</option>
+                                            <option value="Repair">Repair</option>
+                                            <option value="Inspection">Inspection</option>
+                                            <option value="Note">Note</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label">Date</label>
+                                        <input x-model="historyForm.eventDate" type="date" class="form-input text-sm" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="form-label">Title</label>
+                                    <input x-model="historyForm.title" type="text" class="form-input text-sm" placeholder="e.g. Annual service completed" />
+                                </div>
+                                <div>
+                                    <label class="form-label">Notes (optional)</label>
+                                    <textarea x-model="historyForm.notes" class="form-input text-sm" rows="2" placeholder="Any relevant details..."></textarea>
+                                </div>
+                                <div class="flex justify-end gap-2">
+                                    <button @@click="showAddHistory = false" class="btn-secondary text-xs">Cancel</button>
+                                    <button @@click="addHistoryEntry()" class="btn-primary text-xs" :disabled="!historyForm.title">Log Event</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tabs: Tasks and History -->
+                        <div>
+                            <div class="flex border-b border-gray-100 mb-4">
+                                <button @@click="activeTab = 'tasks'" class="px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px"
+                                    :class="activeTab === 'tasks' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+                                    Tasks <span class="ml-1 text-xs bg-gray-100 px-1.5 py-0.5 rounded-full" x-text="selectedDevice.tasks?.length ?? 0"></span>
+                                </button>
+                                <button @@click="activeTab = 'history'" class="px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px"
+                                    :class="activeTab === 'history' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+                                    History <span class="ml-1 text-xs bg-gray-100 px-1.5 py-0.5 rounded-full" x-text="selectedDevice.history?.length ?? 0"></span>
+                                </button>
+                            </div>
+
+                            <!-- Tasks tab -->
+                            <div x-show="activeTab === 'tasks'" class="space-y-2 max-h-64 overflow-y-auto">
+                                <div x-show="!selectedDevice.tasks || selectedDevice.tasks.length === 0" class="text-center py-8 text-gray-400">
+                                    <i class="fas fa-clipboard-list text-2xl mb-2"></i>
+                                    <p class="text-xs">No tasks assigned to this device</p>
+                                </div>
+                                <template x-for="t in selectedDevice.tasks" :key="t.id">
+                                    <div class="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
+                                         :class="t.isOverdue ? 'bg-red-50' : 'bg-gray-50 hover:bg-gray-100'">
+                                        <div class="w-2 h-2 rounded-full flex-shrink-0" :class="taskStatusDot(t.status)"></div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-800 truncate" x-text="t.name"></p>
+                                            <p class="text-xs text-gray-400" x-text="t.assigneeName ? 'Assigned to ' + t.assigneeName : 'Unassigned'"></p>
+                                        </div>
+                                        <div class="flex-shrink-0 flex items-center gap-2">
+                                            <span x-show="t.isOverdue" class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">OVERDUE</span>
+                                            <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="taskStatusBadge(t.status)" x-text="t.status"></span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- History tab -->
+                            <div x-show="activeTab === 'history'" class="space-y-2 max-h-64 overflow-y-auto">
+                                <div x-show="!selectedDevice.history || selectedDevice.history.length === 0" class="text-center py-8 text-gray-400">
+                                    <i class="fas fa-history text-2xl mb-2"></i>
+                                    <p class="text-xs">No history entries yet</p>
+                                    <p class="text-xs mt-1">Log a maintenance event above to get started</p>
+                                </div>
+                                <template x-for="h in selectedDevice.history" :key="h.id">
+                                    <div class="bg-gray-50 rounded-xl px-3 py-3 hover:bg-gray-100 transition-colors">
+                                        <div class="flex items-start justify-between">
+                                            <div class="flex items-start gap-2">
+                                                <div class="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                                                     :class="historyEventColor(h.eventType)">
+                                                    <i class="text-xs" :class="historyEventIcon(h.eventType)"></i>
+                                                </div>
+                                                <div>
+                                                    <p class="text-sm font-medium text-gray-800" x-text="h.title"></p>
+                                                    <p class="text-xs text-gray-400 mt-0.5" x-text="h.performedByName ? 'By ' + h.performedByName : ''"></p>
+                                                    <p x-show="h.notes" class="text-xs text-gray-500 mt-1" x-text="h.notes"></p>
+                                                    <p x-show="h.linkedTaskName" class="text-xs text-blue-500 mt-1">
+                                                        <i class="fas fa-link mr-1"></i>Task: <span x-text="h.linkedTaskName"></span>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div class="text-right flex-shrink-0 ml-2">
+                                                <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="historyEventBadge(h.eventType)" x-text="h.eventType"></span>
+                                                <p class="text-xs text-gray-400 mt-1" x-text="formatDate(h.eventDate)"></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-4 border-t border-gray-100 flex justify-between bg-gray-50">
+                        <button @@click="showDetail = false; deleteDevice(selectedDevice.id)"
+                                class="text-sm text-red-500 hover:text-red-700 flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors">
+                            <i class="fas fa-trash text-xs"></i> Delete
+                        </button>
+                        <div class="flex gap-2">
+                            <button @@click="showDetail = false" class="btn-secondary text-sm">Close</button>
+                            <button @@click="showDetail = false; openEdit(selectedDevice.id)" class="btn-primary text-sm">
+                                <i class="fas fa-pencil mr-1"></i> Edit
+                            </button>
+                        </div>
                     </div>
                 </div>
-                <div class="bg-gray-50 rounded-xl p-3">
-                    <p class="text-xs text-gray-400 mb-1">Purchase Date</p>
-                    <p class="text-sm font-medium text-gray-800" x-text="formatDate(selectedDevice?.purchaseDate)"></p>
-                </div>
-            </div>
-
-            <!-- QR Code section -->
-            <div class="border-t pt-4 mb-5">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-sm font-semibold text-gray-700">QR Code</h3>
-                    <button @@click="loadQrForDetail()" x-show="!detailQrBase64" class="text-xs text-blue-600 hover:underline">Load QR</button>
-                </div>
-                <div x-show="detailQrBase64" class="flex justify-center">
-                    <img :src="'data:image/png;base64,' + detailQrBase64" class="w-32 h-32" alt="QR Code" />
-                </div>
-                <div x-show="!detailQrBase64" class="flex justify-center py-4">
-                    <div class="w-32 h-32 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-qrcode text-3xl text-gray-300"></i>
-                    </div>
-                </div>
-                <p class="text-xs text-gray-400 text-center mt-2">Scan to access device information</p>
-            </div>
-
-            <div class="flex justify-end gap-3">
-                <button @@click="showDetail = false; deleteDevice(selectedDevice.id)" class="text-xs text-red-500 hover:text-red-700 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors">
-                    <i class="fas fa-trash mr-1"></i> Delete
-                </button>
-                <button @@click="showDetail = false" class="btn-secondary">Close</button>
-            </div>
+            </template>
         </div>
     </div>
 
-    <!-- QR Code Modal (standalone) -->
-    <div x-show="qrDevice && !showDetail" class="modal-backdrop" x-transition>
-        <div class="modal p-6 text-center" style="max-width:380px">
-            <h2 class="text-lg font-bold text-gray-900 mb-1" x-text="qrDevice?.name"></h2>
-            <p class="text-xs text-gray-400 mb-4" x-text="qrDevice?.serialNumber"></p>
-            <div x-show="qrBase64" class="flex justify-center mb-4">
-                <img :src="'data:image/png;base64,' + qrBase64" class="w-48 h-48" alt="QR Code" />
+    <!-- QR Code Modal (full screen focus) -->
+    <div x-show="qrDevice" class="modal-backdrop" x-transition>
+        <div class="modal p-8 text-center" style="max-width:400px">
+            <div class="mb-4">
+                <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                    <i class="fas fa-qrcode text-blue-600 text-xl"></i>
+                </div>
+                <h2 class="text-lg font-bold text-gray-900" x-text="qrDevice?.name"></h2>
+                <p class="text-xs text-gray-400 mt-1" x-text="qrDevice?.serialNumber ? 'S/N: ' + qrDevice?.serialNumber : 'Device QR Code'"></p>
             </div>
-            <p class="text-xs text-gray-400 mb-4">Scan this QR code to access device information</p>
-            <button @@click="qrDevice = null; qrBase64 = ''" class="btn-secondary mx-auto">Close</button>
+            <div x-show="qrBase64" class="flex justify-center mb-4 bg-white p-4 rounded-xl border border-gray-100 inline-block mx-auto">
+                <img :src="'data:image/png;base64,' + qrBase64" class="w-52 h-52" alt="QR Code" />
+            </div>
+            <div x-show="!qrBase64" class="flex justify-center mb-4">
+                <div class="w-52 h-52 bg-gray-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-spinner fa-spin text-3xl text-gray-300"></i>
+                </div>
+            </div>
+            <p class="text-xs text-gray-400 mb-2">Scan with any QR code reader to access device profile</p>
+            <p class="text-xs text-blue-500 mb-5 font-medium" x-text="'qss.dental/devices/' + qrDevice?.id"></p>
+            <button @@click="qrDevice = null; qrBase64 = ''" class="btn-secondary w-full">Close</button>
         </div>
     </div>
 
     <!-- Create Device Modal -->
     <div x-show="showCreate" class="modal-backdrop" x-transition>
-        <div class="modal p-6">
+        <div class="modal p-6" style="max-width:520px">
             <div class="flex items-center justify-between mb-5">
-                <h2 class="text-lg font-bold text-gray-900">Add Device</h2>
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900">Add Device</h2>
+                    <p class="text-xs text-gray-400 mt-0.5">A QR code will be generated automatically</p>
+                </div>
                 <button @@click="showCreate = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
             </div>
             <form x-on:submit.prevent="createDevice()">
                 <div class="space-y-4">
-                    <div><label class="form-label">Device Name *</label>
-                    <input x-model="form.name" type="text" class="form-input" required placeholder="e.g. Digital X-Ray Unit" /></div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div><label class="form-label">Manufacturer</label>
-                        <input x-model="form.manufacturer" type="text" class="form-input" /></div>
-                        <div><label class="form-label">Model</label>
-                        <input x-model="form.model" type="text" class="form-input" /></div>
+                    <div>
+                        <label class="form-label">Device Name <span class="text-red-500">*</span></label>
+                        <input x-model="form.name" type="text" class="form-input" required placeholder="e.g. Digital X-Ray Unit" />
+                    </div>
+                    <div>
+                        <label class="form-label">Description</label>
+                        <input x-model="form.description" type="text" class="form-input" placeholder="Brief description of this device" />
                     </div>
                     <div class="grid grid-cols-2 gap-3">
-                        <div><label class="form-label">Serial Number</label>
-                        <input x-model="form.serialNumber" type="text" class="form-input" /></div>
-                        <div><label class="form-label">Room</label>
-                        <select x-model="form.roomId" class="form-input">
-                            <option value="">No room</option>
-                            <template x-for="r in rooms" :key="r.id">
-                                <option :value="r.id" x-text="r.name"></option>
-                            </template>
-                        </select></div>
+                        <div>
+                            <label class="form-label">Manufacturer</label>
+                            <input x-model="form.manufacturer" type="text" class="form-input" placeholder="e.g. Dentsply Sirona" />
+                        </div>
+                        <div>
+                            <label class="form-label">Model</label>
+                            <input x-model="form.model" type="text" class="form-input" placeholder="e.g. Orthophos SL" />
+                        </div>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
-                        <div><label class="form-label">Purchase Date</label>
-                        <input x-model="form.purchaseDate" type="date" class="form-input" /></div>
-                        <div><label class="form-label">Next Maintenance</label>
-                        <input x-model="form.nextMaintenanceDue" type="date" class="form-input" /></div>
+                        <div>
+                            <label class="form-label">Serial Number</label>
+                            <input x-model="form.serialNumber" type="text" class="form-input" placeholder="e.g. SN-2024-001" />
+                        </div>
+                        <div>
+                            <label class="form-label">Room</label>
+                            <select x-model="form.roomId" class="form-input">
+                                <option value="">No room</option>
+                                <template x-for="r in rooms" :key="r.id">
+                                    <option :value="r.id" x-text="r.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label">Purchase Date</label>
+                            <input x-model="form.purchaseDate" type="date" class="form-input" />
+                        </div>
+                        <div>
+                            <label class="form-label">Next Maintenance</label>
+                            <input x-model="form.nextMaintenanceDue" type="date" class="form-input" />
+                        </div>
                     </div>
                 </div>
                 <div class="flex justify-end gap-3 mt-6">
                     <button type="button" @@click="showCreate = false" class="btn-secondary">Cancel</button>
                     <button type="submit" class="btn-primary" :disabled="saving" x-text="saving ? 'Adding...' : 'Add Device'"></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Device Modal -->
+    <div x-show="showEdit" class="modal-backdrop" x-transition>
+        <div class="modal p-6" style="max-width:520px">
+            <div class="flex items-center justify-between mb-5">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900">Edit Device</h2>
+                    <p class="text-xs text-gray-400 mt-0.5">Update device details and maintenance schedule</p>
+                </div>
+                <button @@click="showEdit = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <form x-on:submit.prevent="updateDevice()">
+                <div class="space-y-4">
+                    <div>
+                        <label class="form-label">Device Name <span class="text-red-500">*</span></label>
+                        <input x-model="editForm.name" type="text" class="form-input" required />
+                    </div>
+                    <div>
+                        <label class="form-label">Description</label>
+                        <input x-model="editForm.description" type="text" class="form-input" />
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label">Manufacturer</label>
+                            <input x-model="editForm.manufacturer" type="text" class="form-input" />
+                        </div>
+                        <div>
+                            <label class="form-label">Model</label>
+                            <input x-model="editForm.model" type="text" class="form-input" />
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label">Serial Number</label>
+                            <input x-model="editForm.serialNumber" type="text" class="form-input" />
+                        </div>
+                        <div>
+                            <label class="form-label">Room</label>
+                            <select x-model="editForm.roomId" class="form-input">
+                                <option value="">No room</option>
+                                <template x-for="r in rooms" :key="r.id">
+                                    <option :value="r.id" x-text="r.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label">Purchase Date</label>
+                            <input x-model="editForm.purchaseDate" type="date" class="form-input" />
+                        </div>
+                        <div>
+                            <label class="form-label">Next Maintenance</label>
+                            <input x-model="editForm.nextMaintenanceDue" type="date" class="form-input" />
+                            <p class="text-xs text-gray-400 mt-1">Changing this will log a maintenance history entry.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @@click="showEdit = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary" :disabled="saving" x-text="saving ? 'Saving...' : 'Save Changes'"></button>
                 </div>
             </form>
         </div>
@@ -199,10 +458,14 @@
 <script>
 function devicesApp() {
     return {
-        devices: [], rooms: [], loading: true, saving: false,
-        showCreate: false, showDetail: false, selectedDevice: null, detailQrBase64: '',
+        devices: [], rooms: [],
+        loading: true, saving: false,
+        showCreate: false, showEdit: false, showDetail: false, showAddHistory: false,
+        selectedDevice: null, detailLoading: false, activeTab: 'tasks',
         qrDevice: null, qrBase64: '',
-        form: { name: '', manufacturer: '', model: '', serialNumber: '', roomId: '', purchaseDate: '', nextMaintenanceDue: '' },
+        form: { name: '', description: '', manufacturer: '', model: '', serialNumber: '', roomId: '', purchaseDate: '', nextMaintenanceDue: '' },
+        editForm: { id: null, name: '', description: '', manufacturer: '', model: '', serialNumber: '', roomId: '', purchaseDate: '', nextMaintenanceDue: '' },
+        historyForm: { eventType: 'Maintenance', title: '', notes: '', eventDate: '' },
 
         async load() {
             this.loading = true;
@@ -215,40 +478,89 @@ function devicesApp() {
             finally { this.loading = false; }
         },
 
-        async openCreate() {
-            this.form = { name: '', manufacturer: '', model: '', serialNumber: '', roomId: '', purchaseDate: '', nextMaintenanceDue: '' };
+        openCreate() {
+            this.form = { name: '', description: '', manufacturer: '', model: '', serialNumber: '', roomId: '', purchaseDate: '', nextMaintenanceDue: '' };
             this.showCreate = true;
         },
 
-        openDetail(device) {
-            this.selectedDevice = device;
-            this.detailQrBase64 = device.qrCode || '';
-            this.showDetail = true;
+        async openEdit(deviceId) {
+            const device = this.devices.find(d => d.id === deviceId) || await apiRequest('GET', `/devices/${deviceId}`);
+            this.editForm = {
+                id: device.id,
+                name: device.name,
+                description: device.description || '',
+                manufacturer: device.manufacturer || '',
+                model: device.model || '',
+                serialNumber: device.serialNumber || '',
+                roomId: device.roomId || '',
+                purchaseDate: device.purchaseDate ? new Date(device.purchaseDate).toISOString().slice(0, 10) : '',
+                nextMaintenanceDue: device.nextMaintenanceDue ? new Date(device.nextMaintenanceDue).toISOString().slice(0, 10) : ''
+            };
+            this.showEdit = true;
         },
 
-        async loadQrForDetail() {
-            if (!this.selectedDevice) return;
+        async openDetail(deviceId) {
+            this.showDetail = true;
+            this.detailLoading = true;
+            this.selectedDevice = null;
+            this.activeTab = 'tasks';
+            this.showAddHistory = false;
             try {
-                const res = await apiRequest('GET', `/devices/${this.selectedDevice.id}/qrcode`);
-                this.detailQrBase64 = res.qrCode;
-            } catch(e) { showToast('Failed to load QR code', 'error'); }
+                this.selectedDevice = await apiRequest('GET', `/devices/${deviceId}`);
+            } catch(e) {
+                showToast('Failed to load device details', 'error');
+                this.showDetail = false;
+            } finally {
+                this.detailLoading = false;
+            }
         },
 
         async createDevice() {
             this.saving = true;
             try {
                 await apiRequest('POST', '/devices', {
-                    name: this.form.name, manufacturer: this.form.manufacturer, model: this.form.model,
-                    serialNumber: this.form.serialNumber,
+                    name: this.form.name,
+                    description: this.form.description || null,
+                    manufacturer: this.form.manufacturer || null,
+                    model: this.form.model || null,
+                    serialNumber: this.form.serialNumber || null,
                     roomId: this.form.roomId ? parseInt(this.form.roomId) : null,
                     purchaseDate: this.form.purchaseDate || null,
                     nextMaintenanceDue: this.form.nextMaintenanceDue || null
                 });
                 this.showCreate = false;
                 await this.load();
-                showToast('Device added with QR code generated');
+                showToast('Device added — QR code generated');
             } catch(e) { showToast('Failed to add device', 'error'); }
             finally { this.saving = false; }
+        },
+
+        async updateDevice() {
+            this.saving = true;
+            try {
+                await apiRequest('PUT', `/devices/${this.editForm.id}`, {
+                    name: this.editForm.name,
+                    description: this.editForm.description || null,
+                    manufacturer: this.editForm.manufacturer || null,
+                    model: this.editForm.model || null,
+                    serialNumber: this.editForm.serialNumber || null,
+                    roomId: this.editForm.roomId ? parseInt(this.editForm.roomId) : null,
+                    purchaseDate: this.editForm.purchaseDate || null,
+                    nextMaintenanceDue: this.editForm.nextMaintenanceDue || null
+                });
+                this.showEdit = false;
+                await this.load();
+                showToast('Device updated successfully');
+            } catch(e) { showToast('Failed to update device', 'error'); }
+            finally { this.saving = false; }
+        },
+
+        async loadQrForDetail() {
+            if (!this.selectedDevice) return;
+            try {
+                const res = await apiRequest('GET', `/devices/${this.selectedDevice.id}/qrcode`);
+                this.selectedDevice.qrCode = res.qrCode;
+            } catch(e) { showToast('Failed to load QR code', 'error'); }
         },
 
         async showQr(device) {
@@ -261,13 +573,64 @@ function devicesApp() {
             }
         },
 
+        async addHistoryEntry() {
+            if (!this.historyForm.title.trim()) return;
+            try {
+                await apiRequest('POST', `/devices/${this.selectedDevice.id}/history`, {
+                    eventType: this.historyForm.eventType,
+                    title: this.historyForm.title,
+                    notes: this.historyForm.notes || null,
+                    eventDate: this.historyForm.eventDate || null
+                });
+                this.selectedDevice = await apiRequest('GET', `/devices/${this.selectedDevice.id}`);
+                this.historyForm = { eventType: 'Maintenance', title: '', notes: '', eventDate: '' };
+                this.showAddHistory = false;
+                this.activeTab = 'history';
+                showToast('History entry logged');
+            } catch(e) { showToast('Failed to log history entry', 'error'); }
+        },
+
         async deleteDevice(id) {
-            if(!confirm('Delete this device? This action cannot be undone.')) return;
+            if(!confirm('Delete this device? This cannot be undone.')) return;
             try {
                 await apiRequest('DELETE', `/devices/${id}`);
+                this.showDetail = false;
                 await this.load();
                 showToast('Device deleted');
             } catch(e) { showToast('Failed to delete device', 'error'); }
+        },
+
+        taskStatusBadge(status) {
+            const map = { Open: 'bg-gray-100 text-gray-600', InProgress: 'bg-blue-100 text-blue-700',
+                Completed: 'bg-green-100 text-green-700', Overdue: 'bg-red-100 text-red-700' };
+            return map[status] || 'bg-gray-100 text-gray-600';
+        },
+
+        taskStatusDot(status) {
+            const map = { Open: 'bg-gray-400', InProgress: 'bg-blue-500', Completed: 'bg-green-500', Overdue: 'bg-red-500' };
+            return map[status] || 'bg-gray-400';
+        },
+
+        historyEventColor(type) {
+            const map = { Maintenance: 'bg-blue-100', Repair: 'bg-red-100', Inspection: 'bg-green-100', TaskCompleted: 'bg-purple-100', Note: 'bg-gray-100' };
+            return map[type] || 'bg-gray-100';
+        },
+
+        historyEventIcon(type) {
+            const map = { Maintenance: 'fas fa-wrench text-blue-600', Repair: 'fas fa-tools text-red-600',
+                Inspection: 'fas fa-search text-green-600', TaskCompleted: 'fas fa-check text-purple-600', Note: 'fas fa-sticky-note text-gray-500' };
+            return map[type] || 'fas fa-circle text-gray-400';
+        },
+
+        historyEventBadge(type) {
+            const map = { Maintenance: 'bg-blue-100 text-blue-700', Repair: 'bg-red-100 text-red-700',
+                Inspection: 'bg-green-100 text-green-700', TaskCompleted: 'bg-purple-100 text-purple-700', Note: 'bg-gray-100 text-gray-600' };
+            return map[type] || 'bg-gray-100 text-gray-600';
+        },
+
+        formatDate(d) {
+            if (!d) return '—';
+            return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
         }
     };
 }

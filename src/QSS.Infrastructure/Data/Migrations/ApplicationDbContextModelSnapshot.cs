@@ -313,6 +313,55 @@ namespace QSS.Infrastructure.Data.Migrations
                     b.ToTable("ChatMessages");
                 });
 
+            modelBuilder.Entity("QSS.Domain.Entities.DeviceHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DeviceId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("EventDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("LinkedTaskId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PerformedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceId");
+
+                    b.HasIndex("LinkedTaskId");
+
+                    b.HasIndex("PerformedByUserId");
+
+                    b.ToTable("DeviceHistories");
+                });
+
             modelBuilder.Entity("QSS.Domain.Entities.Device", b =>
                 {
                     b.Property<int>("Id")
@@ -919,6 +968,31 @@ namespace QSS.Infrastructure.Data.Migrations
                     b.Navigation("Room");
                 });
 
+            modelBuilder.Entity("QSS.Domain.Entities.DeviceHistory", b =>
+                {
+                    b.HasOne("QSS.Domain.Entities.Device", "Device")
+                        .WithMany("History")
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("QSS.Domain.Entities.QssTask", "LinkedTask")
+                        .WithMany()
+                        .HasForeignKey("LinkedTaskId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("QSS.Domain.Entities.ApplicationUser", "PerformedBy")
+                        .WithMany()
+                        .HasForeignKey("PerformedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Device");
+
+                    b.Navigation("LinkedTask");
+
+                    b.Navigation("PerformedBy");
+                });
+
             modelBuilder.Entity("QSS.Domain.Entities.LearningMaterial", b =>
                 {
                     b.HasOne("QSS.Domain.Entities.ApplicationUser", "UploadedBy")
@@ -1085,6 +1159,8 @@ namespace QSS.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("QSS.Domain.Entities.Device", b =>
                 {
+                    b.Navigation("History");
+
                     b.Navigation("Tasks");
                 });
 
