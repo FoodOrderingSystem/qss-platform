@@ -6,50 +6,147 @@
     <div class="flex items-center justify-between mb-6">
         <div><h1 class="text-2xl font-bold text-gray-900">Rooms</h1>
         <p class="text-sm text-gray-500">Manage practice rooms and their resources</p></div>
-        <button @@click="showCreate = true" class="btn-primary"><i class="fas fa-plus"></i> Add Room</button>
+        <button @@click="openCreate()" class="btn-primary"><i class="fas fa-plus"></i> Add Room</button>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <template x-for="r in rooms" :key="r.id">
-            <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
+    <!-- Loading skeleton -->
+    <div x-show="loading" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <template x-for="i in [1,2,3]" :key="i">
+            <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 animate-pulse">
                 <div class="flex items-center gap-3 mb-3">
-                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-door-open text-blue-600 text-sm"></i>
-                    </div>
-                    <div>
-                        <h3 class="font-semibold text-gray-900" x-text="r.name"></h3>
-                        <p class="text-xs text-gray-400" x-text="r.location || 'No location'"></p>
+                    <div class="w-10 h-10 bg-gray-100 rounded-lg"></div>
+                    <div class="flex-1">
+                        <div class="h-4 bg-gray-100 rounded mb-1 w-2/3"></div>
+                        <div class="h-3 bg-gray-100 rounded w-1/2"></div>
                     </div>
                 </div>
-                <p class="text-xs text-gray-500 mb-4" x-text="r.description || 'No description'"></p>
-                <div class="flex items-center justify-between text-xs text-gray-500">
-                    <span><i class="fas fa-laptop-medical mr-1"></i><span x-text="r.deviceCount"></span> devices</span>
-                    <span :class="r.openTaskCount > 0 ? 'text-orange-600 font-medium' : ''">
-                        <i class="fas fa-tasks mr-1"></i><span x-text="r.openTaskCount"></span> open tasks
-                    </span>
-                    <button @@click="deleteRoom(r.id)" class="text-red-400 hover:text-red-600">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                <div class="h-3 bg-gray-100 rounded mb-4"></div>
+                <div class="flex justify-between">
+                    <div class="h-3 bg-gray-100 rounded w-20"></div>
+                    <div class="h-3 bg-gray-100 rounded w-20"></div>
                 </div>
             </div>
         </template>
     </div>
 
+    <!-- Empty state -->
+    <div x-show="!loading && rooms.length === 0" class="flex flex-col items-center justify-center py-24 text-center">
+        <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
+            <i class="fas fa-door-open text-2xl text-blue-300"></i>
+        </div>
+        <p class="text-gray-500 font-medium mb-1">No rooms yet</p>
+        <p class="text-xs text-gray-300 mb-4">Add your first practice room to start tracking devices and tasks</p>
+        <button @@click="openCreate()" class="btn-primary text-sm">
+            <i class="fas fa-plus"></i> Add Room
+        </button>
+    </div>
+
+    <!-- Room cards -->
+    <div x-show="!loading && rooms.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <template x-for="r in rooms" :key="r.id">
+            <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-all cursor-pointer group"
+                 @@click="openDetail(r)">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                        <i class="fas fa-door-open text-blue-600 text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors" x-text="r.name"></h3>
+                        <p class="text-xs text-gray-400" x-text="r.location || 'No location'"></p>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mb-4 line-clamp-2" x-text="r.description || 'No description'"></p>
+                <div class="flex items-center justify-between text-xs text-gray-500">
+                    <span><i class="fas fa-laptop-medical mr-1"></i><span x-text="r.deviceCount"></span> devices</span>
+                    <span :class="r.openTaskCount > 0 ? 'text-orange-600 font-medium' : ''">
+                        <i class="fas fa-tasks mr-1"></i><span x-text="r.openTaskCount"></span> open tasks
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">View →</span>
+                        <button @@click.stop="deleteRoom(r.id)" class="text-red-400 hover:text-red-600" title="Delete room">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Room Detail Modal -->
+    <div x-show="showDetail && selectedRoom" class="modal-backdrop" x-transition>
+        <div class="modal p-6" style="max-width:540px">
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-door-open text-blue-600"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-900" x-text="selectedRoom?.name"></h2>
+                        <p class="text-xs text-gray-400" x-text="selectedRoom?.location || 'No location specified'"></p>
+                    </div>
+                </div>
+                <button @@click="showDetail = false" class="text-gray-400 hover:text-gray-600 p-1">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <p class="text-sm text-gray-600 mb-5" x-text="selectedRoom?.description || 'No description provided.'"></p>
+
+            <div class="grid grid-cols-2 gap-4 mb-5">
+                <div class="bg-blue-50 rounded-xl p-4 text-center">
+                    <p class="text-2xl font-bold text-blue-600" x-text="selectedRoom?.deviceCount ?? 0"></p>
+                    <p class="text-xs text-blue-500 mt-1">Devices</p>
+                </div>
+                <div class="rounded-xl p-4 text-center" :class="(selectedRoom?.openTaskCount ?? 0) > 0 ? 'bg-orange-50' : 'bg-gray-50'">
+                    <p class="text-2xl font-bold" :class="(selectedRoom?.openTaskCount ?? 0) > 0 ? 'text-orange-600' : 'text-gray-500'" x-text="selectedRoom?.openTaskCount ?? 0"></p>
+                    <p class="text-xs mt-1" :class="(selectedRoom?.openTaskCount ?? 0) > 0 ? 'text-orange-400' : 'text-gray-400'">Open Tasks</p>
+                </div>
+            </div>
+
+            <!-- Devices in this room -->
+            <div x-show="roomDevices.length > 0" class="mb-5">
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">Devices in this room</h3>
+                <div class="space-y-2 max-h-40 overflow-y-auto">
+                    <template x-for="d in roomDevices" :key="d.id">
+                        <div class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
+                            <div>
+                                <span class="font-medium text-gray-800" x-text="d.name"></span>
+                                <span class="text-xs text-gray-400 ml-2" x-text="d.manufacturer ? '(' + d.manufacturer + ')' : ''"></span>
+                            </div>
+                            <span x-show="d.maintenanceOverdue" class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">OVERDUE</span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button @@click="showDetail = false; deleteRoom(selectedRoom.id)" class="text-xs text-red-500 hover:text-red-700 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors">
+                    <i class="fas fa-trash mr-1"></i> Delete Room
+                </button>
+                <button @@click="showDetail = false" class="btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Room Modal -->
     <div x-show="showCreate" class="modal-backdrop" x-transition>
         <div class="modal p-6">
-            <h2 class="text-lg font-bold text-gray-900 mb-5">Add Room</h2>
+            <div class="flex items-center justify-between mb-5">
+                <h2 class="text-lg font-bold text-gray-900">Add Room</h2>
+                <button @@click="showCreate = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
             <form x-on:submit.prevent="createRoom()">
                 <div class="space-y-4">
                     <div><label class="form-label">Room Name *</label>
-                    <input x-model="form.name" type="text" class="form-input" required /></div>
+                    <input x-model="form.name" type="text" class="form-input" required placeholder="e.g. Treatment Room 1" /></div>
                     <div><label class="form-label">Location</label>
-                    <input x-model="form.location" type="text" class="form-input" /></div>
+                    <input x-model="form.location" type="text" class="form-input" placeholder="e.g. Ground Floor, East Wing" /></div>
                     <div><label class="form-label">Description</label>
-                    <textarea x-model="form.description" class="form-input" rows="2"></textarea></div>
+                    <textarea x-model="form.description" class="form-input" rows="2" placeholder="Purpose and notes about this room"></textarea></div>
                 </div>
                 <div class="flex justify-end gap-3 mt-6">
                     <button type="button" @@click="showCreate = false" class="btn-secondary">Cancel</button>
-                    <button type="submit" class="btn-primary">Add Room</button>
+                    <button type="submit" class="btn-primary" :disabled="saving" x-text="saving ? 'Adding...' : 'Add Room'"></button>
                 </div>
             </form>
         </div>
@@ -60,16 +157,51 @@
 <script>
 function roomsApp() {
     return {
-        rooms: [], showCreate: false, form: { name: '', location: '', description: '' },
-        async load() { this.rooms = await apiRequest('GET', '/rooms'); },
-        async createRoom() {
-            try { await apiRequest('POST', '/rooms', this.form); this.showCreate = false; await this.load(); showToast('Room added'); }
-            catch(e) { showToast('Failed', 'error'); }
+        rooms: [], allDevices: [], roomDevices: [],
+        loading: true, saving: false,
+        showCreate: false, showDetail: false, selectedRoom: null,
+        form: { name: '', location: '', description: '' },
+
+        async load() {
+            this.loading = true;
+            try {
+                [this.rooms, this.allDevices] = await Promise.all([
+                    apiRequest('GET', '/rooms'),
+                    apiRequest('GET', '/devices').catch(() => [])
+                ]);
+            } catch(e) { showToast('Failed to load rooms', 'error'); }
+            finally { this.loading = false; }
         },
+
+        openCreate() {
+            this.form = { name: '', location: '', description: '' };
+            this.showCreate = true;
+        },
+
+        openDetail(room) {
+            this.selectedRoom = room;
+            this.roomDevices = this.allDevices.filter(d => d.roomId === room.id || d.roomName === room.name);
+            this.showDetail = true;
+        },
+
+        async createRoom() {
+            this.saving = true;
+            try {
+                await apiRequest('POST', '/rooms', this.form);
+                this.showCreate = false;
+                await this.load();
+                showToast('Room added successfully');
+            } catch(e) { showToast('Failed to add room', 'error'); }
+            finally { this.saving = false; }
+        },
+
         async deleteRoom(id) {
-            if(!confirm('Delete room?')) return;
-            try { await apiRequest('DELETE', `/rooms/${id}`); await this.load(); showToast('Deleted'); }
-            catch(e) { showToast('Failed', 'error'); }
+            if(!confirm('Delete this room? Devices and tasks linked to it will lose their room reference.')) return;
+            try {
+                await apiRequest('DELETE', `/rooms/${id}`);
+                await this.load();
+                showToast('Room deleted');
+            } catch(e) { showToast('Failed to delete room', 'error'); }
         }
     };
 }

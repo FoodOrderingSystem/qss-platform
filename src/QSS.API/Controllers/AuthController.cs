@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using QSS.Domain.Entities;
 using System.IdentityModel.Tokens.Jwt;
@@ -22,15 +23,23 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> Login([FromBody] LoginDto dto)
     {
         var user = await _userManager.FindByEmailAsync(dto.Email);
         if (user == null || !user.IsActive)
             return Unauthorized(new { message = "Invalid credentials" });
 
-        if (!await _userManager.CheckPasswordAsync(user, dto.Password))
-            return Unauthorized(new { message = "Invalid credentials" });
+        if (await _userManager.IsLockedOutAsync(user))
+            return StatusCode(429, new { message = "Account temporarily locked due to too many failed attempts. Try again in 15 minutes." });
 
+        if (!await _userManager.CheckPasswordAsync(user, dto.Password))
+        {
+            await _userManager.AccessFailedAsync(user);
+            return Unauthorized(new { message = "Invalid credentials" });
+        }
+
+        await _userManager.ResetAccessFailedCountAsync(user);
         user.LastLoginAt = DateTime.UtcNow;
         await _userManager.UpdateAsync(user);
 

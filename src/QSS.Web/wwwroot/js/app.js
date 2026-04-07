@@ -17,7 +17,6 @@ async function apiRequest(method, path, body = null) {
         ? path
         : '/api' + (path.startsWith('/') ? path : '/' + path);
     const finalUrl = `${base}${normalizedPath}`;
-    console.log('apiRequest final url', finalUrl);
     const token = getToken();
     const opts = {
         method,

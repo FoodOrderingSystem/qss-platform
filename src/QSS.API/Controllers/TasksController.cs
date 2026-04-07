@@ -131,6 +131,7 @@ public class TasksController : ControllerBase
     }
 
     [HttpPatch("{id}/status")]
+    [Authorize(Roles = "Superadmin,Admin,Dentist,DentalAssistant")]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateTaskStatusDto dto)
     {
         var task = await _db.Tasks.FindAsync(id);
@@ -143,9 +144,18 @@ public class TasksController : ControllerBase
     }
 
     [HttpPost("{id}/comments")]
+    [Authorize(Roles = "Superadmin,Admin,Dentist,DentalAssistant")]
     public async Task<IActionResult> AddComment(int id, [FromBody] AddCommentDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+        if (!string.IsNullOrEmpty(dto.MentionedUserId))
+        {
+            var mentionedUser = await _db.Users.FindAsync(dto.MentionedUserId);
+            if (mentionedUser == null)
+                return BadRequest(new { message = "Mentioned user does not exist" });
+        }
+
         var comment = new TaskComment
         {
             TaskId = id,
