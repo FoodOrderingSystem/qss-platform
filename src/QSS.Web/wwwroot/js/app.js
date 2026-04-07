@@ -1,9 +1,5 @@
 // QSS Platform - Core JS
 
-// API_BASE is injected by _Layout.cshtml from server configuration (ApiBaseUrl).
-// Falls back to port-swap for local development if not set.
-const API_BASE = window.API_BASE || window.location.origin.replace('5001', '5000');
-
 // Utility: get JWT from cookie/session
 function getToken() {
     return document.cookie.split(';')
@@ -11,8 +7,17 @@ function getToken() {
         ?.split('=')[1] ?? '';
 }
 
-// API helper
+// API helper — reads window.API_BASE at call time so it always reflects the
+// value injected by _Layout.cshtml, never a stale module-level capture.
+// Contract: callers pass paths like '/users', '/tasks', etc. (without /api prefix).
+// Paths that already start with '/api' are used as-is to avoid double-prefixing.
 async function apiRequest(method, path, body = null) {
+    const base = window.API_BASE || window.location.origin.replace('5001', '5000');
+    const normalizedPath = path.startsWith('/api')
+        ? path
+        : '/api' + (path.startsWith('/') ? path : '/' + path);
+    const finalUrl = `${base}${normalizedPath}`;
+    console.log('apiRequest final url', finalUrl);
     const token = getToken();
     const opts = {
         method,
@@ -22,7 +27,7 @@ async function apiRequest(method, path, body = null) {
         }
     };
     if (body) opts.body = JSON.stringify(body);
-    const res = await fetch(`${API_BASE}/api${path}`, opts);
+    const res = await fetch(finalUrl, opts);
     if (!res.ok) {
         const err = await res.text();
         throw new Error(err || `HTTP ${res.status}`);
