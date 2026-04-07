@@ -14,6 +14,7 @@ RUN dotnet publish "QSS.API.csproj" -c Release -o /app/publish /p:UseAppHost=fal
 
 FROM base AS final
 WORKDIR /app
+EXPOSE 8080
 RUN mkdir -p /app/data /app/wwwroot/uploads
 COPY --from=build /app/publish .
 ENV ASPNETCORE_ENVIRONMENT=Production

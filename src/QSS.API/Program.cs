@@ -149,6 +149,9 @@ app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
 app.MapHub<NotificationHub>("/hubs/notifications");
 
+// Health check endpoint for Railway
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
+
 // Redirect root to swagger
 app.MapGet("/", () => Results.Redirect("/swagger"));
 
