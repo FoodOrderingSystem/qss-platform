@@ -6,7 +6,14 @@ var builder = WebApplication.CreateBuilder(args);
 // Persist Data Protection keys to the volume so cookie auth survives redeploys.
 // Mount a Railway volume at /app/keys (or set DataProtectionKeysPath env var to override).
 var keysPath = Environment.GetEnvironmentVariable("DataProtectionKeysPath") ?? "/app/keys";
-Directory.CreateDirectory(keysPath);
+try
+{
+    Directory.CreateDirectory(keysPath);
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine($"[Startup] Warning: Could not create keys directory '{keysPath}': {ex.Message}. Auth cookies will not persist across redeploys.");
+}
 builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(keysPath))
     .SetApplicationName("QSSPlatform");
