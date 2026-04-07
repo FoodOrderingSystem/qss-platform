@@ -113,6 +113,17 @@ These users are created automatically on first startup (idempotent — safe on r
 
 ---
 
+## Healthcheck paths
+
+| Service | Healthcheck path | Notes |
+|---------|-----------------|-------|
+| `qss-api` | `/health` | Returns `{"status":"healthy","database":"connected"}` |
+| `qss-web` | `/health` | Returns `{"status":"healthy"}` — no auth, no DB dependency |
+
+**Never use `/` as the healthcheck path.** On `qss-web`, `/` redirects to `/Dashboard` which requires authentication, causing every healthcheck probe to receive a 302/401 and marking the service as unavailable.
+
+---
+
 ## Verifying a healthy deploy
 
 Run these checks in order after every deploy:
@@ -127,24 +138,41 @@ Expected response (HTTP 200):
 ```
 If `database` is `"unreachable"`, the SQLite volume is not mounted correctly at `/app/data`.
 
-### 2. Swagger UI
+### 2. Web health check
+```
+GET https://qss-web-production.up.railway.app/health
+```
+Expected response (HTTP 200):
+```json
+{"status":"healthy"}
+```
+This endpoint requires no authentication and has no dependency on the API or database. If it returns anything other than HTTP 200, the web container itself has not started correctly.
+
+### 3. Swagger UI
 ```
 GET https://qss-api-production.up.railway.app/swagger
 ```
 Expected: Swagger UI loads in browser (HTTP 200).
 
-### 3. Web login
+### 4. Web login
 ```
 https://qss-web-production.up.railway.app/Login
 ```
 Login with `superadmin@qss.com` / `Admin@1234!` → expect redirect to `/Dashboard`.
 
-### 4. Redeploy regression check
-After redeploying both services, repeat steps 1–3. Users must still exist and `/health` must report DB connected.
+### 5. Redeploy regression check
+After redeploying both services, repeat steps 1–4. Users must still exist and `/health` on both services must return HTTP 200.
 
 ---
 
 ## Troubleshooting
+
+### "Container failed healthcheck" on qss-web
+Railway probes the healthcheck path during deploy. If it receives anything other than HTTP 200, the deploy is marked failed.
+
+1. **Wrong healthcheck path** — Go to Railway → `qss-web` → Settings → Config as Code → confirm Config File Path is `railway.web.toml`. That file sets `healthcheckPath = "/health"`. Never use `/` — it redirects to `/Dashboard` which requires authentication.
+2. **App not yet listening** — Increase `healthcheckTimeout` in `railway.web.toml` if the container is slow to start.
+3. **Keys volume warning in logs** — This is a warning, not a fatal error. The app still starts; Data Protection keys are just ephemeral. To silence the warning and persist auth cookies across redeploys, mount the `qss-web-keys` volume at exactly `/app/keys` in Railway → `qss-web` → Volumes.
 
 ### "Container failed to start" on qss-api
 This usually means one of:
