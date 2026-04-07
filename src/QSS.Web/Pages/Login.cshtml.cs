@@ -43,9 +43,16 @@ public class LoginModel : PageModel
             var client = _httpClientFactory.CreateClient("QssApi");
             var response = await client.PostAsJsonAsync("/api/auth/login", new { email, password });
 
-            if (!response.IsSuccessStatusCode)
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
                 ErrorMessage = "Invalid credentials. Please try again.";
+                return Page();
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("API login failed with status {StatusCode}", response.StatusCode);
+                ErrorMessage = "Login service error. Please try again later.";
                 return Page();
             }
 
