@@ -83,7 +83,7 @@ public class LoginModel : PageModel
         catch (Exception ex)
         {
             _logger.LogError(ex, "Login failed");
-            ErrorMessage = "Unable to connect to the server. Make sure the API is running on port 5000.";
+            ErrorMessage = "Unable to connect to the API server. Please check your connection and try again.";
             return Page();
         }
     }
