@@ -143,7 +143,8 @@
                             </div>
                             <div class="space-y-2 max-h-72 overflow-y-auto">
                                 <template x-for="t in selectedProcess.tasks" :key="t.id">
-                                    <div class="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2.5 hover:bg-gray-100 transition-colors">
+                                    <div class="flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2.5 hover:bg-blue-50 transition-colors cursor-pointer"
+                                         @@click="openTask(t.id)">
                                         <div class="w-2 h-2 rounded-full flex-shrink-0" :class="taskStatusDot(t.status)"></div>
                                         <div class="flex-1 min-w-0">
                                             <p class="text-sm font-medium text-gray-800 truncate" x-text="t.name"></p>
@@ -152,6 +153,7 @@
                                         <div class="flex-shrink-0 flex items-center gap-2">
                                             <span x-show="t.isOverdue" class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">OVERDUE</span>
                                             <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="taskStatusBadge(t.status)" x-text="t.status"></span>
+                                            <span class="text-xs text-blue-500 font-medium ml-1">Open →</span>
                                         </div>
                                     </div>
                                 </template>
@@ -178,14 +180,14 @@
     </div>
 
     <!-- Create Modal -->
-    <div x-show="showCreate" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showCreate = false">
+    <div x-show="showCreate" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showCreate = false; unlockScroll()">
         <div class="modal p-6" style="max-width:480px">
             <div class="flex items-center justify-between mb-5">
                 <div>
                     <h2 class="text-lg font-bold text-gray-900">Create Process</h2>
                     <p class="text-xs text-gray-400 mt-0.5">Define a new quality management process</p>
                 </div>
-                <button @@click="showCreate = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                <button @@click="showCreate = false; unlockScroll()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
             </div>
             <form x-on:submit.prevent="createProcess()">
                 <div class="space-y-4">
@@ -211,7 +213,7 @@
                     </div>
                 </div>
                 <div class="flex justify-end gap-3 mt-6">
-                    <button type="button" @@click="showCreate = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @@click="showCreate = false; unlockScroll()" class="btn-secondary">Cancel</button>
                     <button type="submit" class="btn-primary" :disabled="saving" x-text="saving ? 'Creating...' : 'Create Process'"></button>
                 </div>
             </form>
@@ -219,14 +221,14 @@
     </div>
 
     <!-- Edit Modal -->
-    <div x-show="showEdit" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showEdit = false">
+    <div x-show="showEdit" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showEdit = false; unlockScroll()">
         <div class="modal p-6" style="max-width:480px">
             <div class="flex items-center justify-between mb-5">
                 <div>
                     <h2 class="text-lg font-bold text-gray-900">Edit Process</h2>
                     <p class="text-xs text-gray-400 mt-0.5">Update process details</p>
                 </div>
-                <button @@click="showEdit = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                <button @@click="showEdit = false; unlockScroll()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
             </div>
             <form x-on:submit.prevent="updateProcess()">
                 <div class="space-y-4">
@@ -252,7 +254,7 @@
                     </div>
                 </div>
                 <div class="flex justify-end gap-3 mt-6">
-                    <button type="button" @@click="showEdit = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @@click="showEdit = false; unlockScroll()" class="btn-secondary">Cancel</button>
                     <button type="submit" class="btn-primary" :disabled="saving" x-text="saving ? 'Saving...' : 'Save Changes'"></button>
                 </div>
             </form>
@@ -315,6 +317,10 @@ function processesApp() {
 
         openEditById(p) {
             this.openEdit(p);
+        },
+
+        openTask(taskId) {
+            window.location.href = '/Tasks?open=' + taskId;
         },
 
         async createProcess() {

@@ -288,14 +288,14 @@
     </div>
 
     <!-- Create Task Modal -->
-    <div x-show="showCreate" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showCreate = false">
+    <div x-show="showCreate" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showCreate = false; unlockScroll()">
         <div class="modal p-6" style="max-width:580px">
             <div class="flex items-center justify-between mb-5">
                 <div>
                     <h2 class="text-lg font-bold text-gray-900">Create New Task</h2>
                     <p class="text-xs text-gray-400 mt-0.5">Define a task, assign it, and link to a process</p>
                 </div>
-                <button @@click="showCreate = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                <button @@click="showCreate = false; unlockScroll()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
             </div>
             <form x-on:submit.prevent="createTask()">
                 <div class="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
@@ -387,7 +387,7 @@
                     </div>
                 </div>
                 <div class="flex justify-end gap-3 mt-5">
-                    <button type="button" @@click="showCreate = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @@click="showCreate = false; unlockScroll()" class="btn-secondary">Cancel</button>
                     <button type="submit" class="btn-primary" :disabled="saving" x-text="saving ? 'Creating...' : 'Create Task'"></button>
                 </div>
             </form>
@@ -395,14 +395,14 @@
     </div>
 
     <!-- Edit Task Modal -->
-    <div x-show="showEdit" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showEdit = false">
+    <div x-show="showEdit" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showEdit = false; unlockScroll()">
         <div class="modal p-6" style="max-width:580px">
             <div class="flex items-center justify-between mb-5">
                 <div>
                     <h2 class="text-lg font-bold text-gray-900">Edit Task</h2>
                     <p class="text-xs text-gray-400 mt-0.5">Update task details and assignments</p>
                 </div>
-                <button @@click="showEdit = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                <button @@click="showEdit = false; unlockScroll()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
             </div>
             <form x-on:submit.prevent="updateTask()">
                 <div class="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
@@ -493,7 +493,7 @@
                     </div>
                 </div>
                 <div class="flex justify-end gap-3 mt-5">
-                    <button type="button" @@click="showEdit = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @@click="showEdit = false; unlockScroll()" class="btn-secondary">Cancel</button>
                     <button type="submit" class="btn-primary" :disabled="saving" x-text="saving ? 'Saving...' : 'Save Changes'"></button>
                 </div>
             </form>
@@ -507,7 +507,7 @@ function tasksApp() {
     return {
         tasks: [], processes: [], users: [], rooms: [], devices: [],
         filter: { status: '', search: '' },
-        loading: true, saving: false,
+        loading: true, saving: false, _initialLoad: true,
         showCreate: false, showEdit: false, showDetail: false,
         selectedTask: null, detailLoading: false, newComment: '',
         form: { name: '', description: '', processId: '', assigneeId: '', dueDate: '', frequency: '0', roomId: '', deviceId: '', dependsOnTaskId: '', attachmentUrl: '', attachmentName: '' },
@@ -526,6 +526,11 @@ function tasksApp() {
             try {
                 const params = this.filter.status ? `?status=${this.filter.status}` : '';
                 this.tasks = await apiRequest('GET', `/tasks${params}`);
+                if (this._initialLoad) {
+                    this._initialLoad = false;
+                    const openId = new URLSearchParams(window.location.search).get('open');
+                    if (openId) await this.openDetail(parseInt(openId));
+                }
             } catch(e) { showToast('Failed to load tasks', 'error'); }
             finally { this.loading = false; }
         },

@@ -146,8 +146,9 @@
                                     <p class="text-xs">No tasks assigned to this room</p>
                                 </div>
                                 <template x-for="t in selectedRoom.tasks" :key="t.id">
-                                    <div class="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
-                                         :class="t.isOverdue ? 'bg-red-50' : 'bg-gray-50 hover:bg-gray-100'">
+                                    <div class="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors cursor-pointer"
+                                         :class="t.isOverdue ? 'bg-red-50 hover:bg-red-100' : 'bg-gray-50 hover:bg-blue-50'"
+                                         @@click="openTask(t.id)">
                                         <div class="w-2 h-2 rounded-full flex-shrink-0" :class="taskStatusDot(t.status)"></div>
                                         <div class="flex-1 min-w-0">
                                             <p class="text-sm font-medium text-gray-800 truncate" x-text="t.name"></p>
@@ -157,6 +158,7 @@
                                             <span x-show="t.dueDate" class="text-xs text-gray-400" x-text="formatDate(t.dueDate)"></span>
                                             <span x-show="t.isOverdue" class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">OVERDUE</span>
                                             <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="taskStatusBadge(t.status)" x-text="t.status"></span>
+                                            <span class="text-xs text-blue-500 font-medium ml-1">Open →</span>
                                         </div>
                                     </div>
                                 </template>
@@ -169,15 +171,19 @@
                                     <p class="text-xs">No devices assigned to this room</p>
                                 </div>
                                 <template x-for="d in selectedRoom.devices" :key="d.id">
-                                    <div class="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 hover:bg-gray-100 transition-colors">
+                                    <div class="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 hover:bg-blue-50 transition-colors cursor-pointer"
+                                         @@click="openDevice(d.id)">
                                         <div>
                                             <p class="text-sm font-medium text-gray-800" x-text="d.name"></p>
                                             <p class="text-xs text-gray-400" x-text="[d.manufacturer, d.model].filter(Boolean).join(' · ') || 'No model info'"></p>
                                         </div>
-                                        <div class="text-right">
-                                            <p class="text-xs text-gray-400" x-text="d.serialNumber ? 'S/N: ' + d.serialNumber : ''"></p>
-                                            <span x-show="d.maintenanceOverdue" class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">Maintenance Overdue</span>
-                                            <span x-show="!d.maintenanceOverdue && d.nextMaintenanceDue" class="text-xs text-gray-400" x-text="'Due: ' + formatDate(d.nextMaintenanceDue)"></span>
+                                        <div class="text-right flex items-center gap-2">
+                                            <div>
+                                                <p class="text-xs text-gray-400" x-text="d.serialNumber ? 'S/N: ' + d.serialNumber : ''"></p>
+                                                <span x-show="d.maintenanceOverdue" class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">Maintenance Overdue</span>
+                                                <span x-show="!d.maintenanceOverdue && d.nextMaintenanceDue" class="text-xs text-gray-400" x-text="'Due: ' + formatDate(d.nextMaintenanceDue)"></span>
+                                            </div>
+                                            <span class="text-xs text-blue-500 font-medium">Open →</span>
                                         </div>
                                     </div>
                                 </template>
@@ -203,14 +209,14 @@
     </div>
 
     <!-- Create Room Modal -->
-    <div x-show="showCreate" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showCreate = false">
+    <div x-show="showCreate" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showCreate = false; unlockScroll()">
         <div class="modal p-6" style="max-width:460px">
             <div class="flex items-center justify-between mb-5">
                 <div>
                     <h2 class="text-lg font-bold text-gray-900">Add Room</h2>
                     <p class="text-xs text-gray-400 mt-0.5">Define a new practice room</p>
                 </div>
-                <button @@click="showCreate = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                <button @@click="showCreate = false; unlockScroll()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
             </div>
             <form x-on:submit.prevent="createRoom()">
                 <div class="space-y-4">
@@ -228,7 +234,7 @@
                     </div>
                 </div>
                 <div class="flex justify-end gap-3 mt-6">
-                    <button type="button" @@click="showCreate = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @@click="showCreate = false; unlockScroll()" class="btn-secondary">Cancel</button>
                     <button type="submit" class="btn-primary" :disabled="saving" x-text="saving ? 'Adding...' : 'Add Room'"></button>
                 </div>
             </form>
@@ -236,14 +242,14 @@
     </div>
 
     <!-- Edit Room Modal -->
-    <div x-show="showEdit" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showEdit = false">
+    <div x-show="showEdit" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showEdit = false; unlockScroll()">
         <div class="modal p-6" style="max-width:460px">
             <div class="flex items-center justify-between mb-5">
                 <div>
                     <h2 class="text-lg font-bold text-gray-900">Edit Room</h2>
                     <p class="text-xs text-gray-400 mt-0.5">Update room details</p>
                 </div>
-                <button @@click="showEdit = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                <button @@click="showEdit = false; unlockScroll()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
             </div>
             <form x-on:submit.prevent="updateRoom()">
                 <div class="space-y-4">
@@ -261,7 +267,7 @@
                     </div>
                 </div>
                 <div class="flex justify-end gap-3 mt-6">
-                    <button type="button" @@click="showEdit = false" class="btn-secondary">Cancel</button>
+                    <button type="button" @@click="showEdit = false; unlockScroll()" class="btn-secondary">Cancel</button>
                     <button type="submit" class="btn-primary" :disabled="saving" x-text="saving ? 'Saving...' : 'Save Changes'"></button>
                 </div>
             </form>
@@ -342,6 +348,14 @@ function roomsApp() {
                 showToast('Room updated successfully');
             } catch(e) { showToast('Failed to update room', 'error'); }
             finally { this.saving = false; }
+        },
+
+        openTask(taskId) {
+            window.location.href = '/Tasks?open=' + taskId;
+        },
+
+        openDevice(deviceId) {
+            window.location.href = '/Devices?open=' + deviceId;
         },
 
         async deleteRoom(id) {
