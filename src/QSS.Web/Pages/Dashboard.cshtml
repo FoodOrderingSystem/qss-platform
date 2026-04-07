@@ -6,22 +6,38 @@
 
 <div x-data="dashboardApp()" x-init="load()">
     <!-- Page Header -->
-    <div class="flex items-center justify-between mb-6">
+    <div class="page-header">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
             <p class="text-sm text-gray-500 mt-0.5">Quality Management Overview</p>
         </div>
-        <span class="text-xs text-gray-400" x-text="'Last updated: ' + new Date().toLocaleTimeString()"></span>
+        <span class="text-xs text-gray-400 self-center whitespace-nowrap" x-text="'Updated: ' + new Date().toLocaleTimeString()"></span>
     </div>
 
-    <!-- QSS Score + Stats -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
+    <!-- Loading skeleton for KPI cards -->
+    <div x-show="loading" class="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
+        <template x-for="i in [1,2,3,4,5]" :key="i">
+            <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 animate-pulse">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gray-100 rounded-lg flex-shrink-0"></div>
+                    <div class="flex-1">
+                        <div class="h-6 bg-gray-100 rounded w-12 mb-1"></div>
+                        <div class="h-3 bg-gray-100 rounded w-20"></div>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- QSS Score + Stats (shown after load) -->
+    <div x-show="!loading" x-cloak class="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-5 gap-4 mb-6">
         <!-- QSS Score Card -->
-        <div class="xl:col-span-1 bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col items-center justify-center">
+        <div class="col-span-2 sm:col-span-1 xl:col-span-1 bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col items-center justify-center">
             <div class="relative" style="width:100px;height:100px;">
                 <canvas id="qssScoreChart" width="100" height="100"></canvas>
                 <div class="absolute inset-0 flex flex-col items-center justify-center">
-                    <span class="text-2xl font-bold text-gray-900" x-text="data.qssScore + '%'">—</span>
+                    <span class="text-2xl font-bold text-gray-900"
+                          x-text="data.qssScore != null ? data.qssScore + '%' : '—'">—</span>
                 </div>
             </div>
             <p class="text-sm font-medium text-gray-700 mt-3">QSS Score</p>
@@ -30,7 +46,7 @@
 
         <!-- Stat Cards -->
         <div class="stat-card">
-            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 <i class="fas fa-tasks text-blue-600"></i>
             </div>
             <div>
@@ -40,7 +56,7 @@
         </div>
 
         <div class="stat-card">
-            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 <i class="fas fa-check-circle text-green-600"></i>
             </div>
             <div>
@@ -50,7 +66,7 @@
         </div>
 
         <div class="stat-card">
-            <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+            <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 <i class="fas fa-exclamation-circle text-red-600"></i>
             </div>
             <div>
@@ -60,7 +76,7 @@
         </div>
 
         <div class="stat-card">
-            <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
+            <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 <i class="fas fa-users text-yellow-600"></i>
             </div>
             <div>
@@ -71,21 +87,21 @@
     </div>
 
     <!-- Alerts -->
-    <div class="space-y-2 mb-6" x-show="data.alerts && data.alerts.length > 0">
+    <div class="space-y-2 mb-6" x-show="!loading && data.alerts && data.alerts.length > 0">
         <template x-for="alert in (data.alerts ?? [])" :key="alert.message">
-            <div class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium"
+            <div class="flex items-start gap-3 px-4 py-3 rounded-lg text-sm font-medium"
                  :class="{
                    'bg-red-50 border border-red-200 text-red-800': alert.type === 'danger',
                    'bg-yellow-50 border border-yellow-200 text-yellow-800': alert.type === 'warning',
                    'bg-blue-50 border border-blue-200 text-blue-800': alert.type === 'info'
                  }">
-                <i class="fas" :class="{
+                <i class="fas mt-0.5 flex-shrink-0" :class="{
                    'fa-times-circle': alert.type === 'danger',
                    'fa-exclamation-triangle': alert.type === 'warning',
                    'fa-info-circle': alert.type === 'info'
                 }"></i>
-                <span x-text="alert.message"></span>
-                <a :href="alert.resourceUrl" class="ml-auto underline text-xs" x-show="alert.resourceUrl">View</a>
+                <span x-text="alert.message" class="flex-1"></span>
+                <a :href="alert.resourceUrl" class="ml-auto underline text-xs whitespace-nowrap" x-show="alert.resourceUrl">View</a>
             </div>
         </template>
     </div>
@@ -98,19 +114,33 @@
                 <h2 class="font-semibold text-gray-800">Recent Tasks</h2>
                 <a href="/Tasks" class="text-xs text-blue-600 hover:underline">View all</a>
             </div>
-            <div class="divide-y divide-gray-50">
-                <template x-for="task in (data.recentTasks ?? [])" :key="task.id">
-                    <div class="px-5 py-3 flex items-center gap-3">
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-gray-900 truncate" x-text="task.name"></p>
-                            <p class="text-xs text-gray-400" x-text="(task.assigneeName ?? 'Unassigned') + ' · ' + (task.processName ?? '')"></p>
+            <!-- Loading skeleton -->
+            <div x-show="loading">
+                <template x-for="i in [1,2,3,4]" :key="i">
+                    <div class="px-5 py-3 flex items-center gap-3 border-b border-gray-50 animate-pulse">
+                        <div class="flex-1">
+                            <div class="h-4 bg-gray-100 rounded w-3/4 mb-1"></div>
+                            <div class="h-3 bg-gray-100 rounded w-1/2"></div>
                         </div>
-                        <span class="flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium"
-                              :class="statusBadge(task.status)"
-                              x-text="task.status"></span>
+                        <div class="h-5 bg-gray-100 rounded-full w-16"></div>
                     </div>
                 </template>
-                <div x-show="!data.recentTasks || data.recentTasks.length === 0" class="px-5 py-6 text-center text-gray-400 text-sm">No tasks yet</div>
+            </div>
+            <div x-show="!loading" x-cloak>
+                <div class="divide-y divide-gray-50">
+                    <template x-for="task in (data.recentTasks ?? [])" :key="task.id">
+                        <div class="px-5 py-3 flex items-center gap-3">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-900 truncate" x-text="task.name"></p>
+                                <p class="text-xs text-gray-400" x-text="(task.assigneeName ?? 'Unassigned') + ' · ' + (task.processName ?? '')"></p>
+                            </div>
+                            <span class="flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium"
+                                  :class="statusBadge(task.status)"
+                                  x-text="task.status"></span>
+                        </div>
+                    </template>
+                    <div x-show="!data.recentTasks || data.recentTasks.length === 0" class="px-5 py-6 text-center text-gray-400 text-sm">No tasks yet</div>
+                </div>
             </div>
         </div>
 
@@ -120,52 +150,89 @@
                 <h2 class="font-semibold text-gray-800">Employee Performance</h2>
                 <a href="/Reports" class="text-xs text-blue-600 hover:underline">Full report</a>
             </div>
-            <div class="divide-y divide-gray-50">
-                <template x-for="emp in (data.topPerformers ?? [])" :key="emp.userId">
-                    <div class="px-5 py-3 flex items-center gap-3">
-                        <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                             x-text="emp.userName?.charAt(0) ?? '?'"></div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-gray-900" x-text="emp.userName"></p>
-                            <div class="flex items-center gap-2 mt-1">
-                                <div class="flex-1 bg-gray-100 rounded-full h-1.5">
-                                    <div class="h-1.5 rounded-full bg-blue-500" :style="`width: ${emp.completionRate}%`"></div>
-                                </div>
-                                <span class="text-xs text-gray-500" x-text="emp.completionRate + '%'"></span>
-                            </div>
+            <!-- Loading skeleton -->
+            <div x-show="loading">
+                <template x-for="i in [1,2,3,4]" :key="i">
+                    <div class="px-5 py-3 flex items-center gap-3 border-b border-gray-50 animate-pulse">
+                        <div class="w-8 h-8 bg-gray-100 rounded-full flex-shrink-0"></div>
+                        <div class="flex-1">
+                            <div class="h-4 bg-gray-100 rounded w-1/2 mb-2"></div>
+                            <div class="h-2 bg-gray-100 rounded w-full"></div>
                         </div>
-                        <div class="text-right flex-shrink-0">
-                            <p class="text-sm font-medium text-gray-900" x-text="emp.totalCompleted + '/' + emp.totalAssigned"></p>
-                            <p class="text-xs text-gray-400">completed</p>
-                        </div>
+                        <div class="w-12 h-4 bg-gray-100 rounded"></div>
                     </div>
                 </template>
-                <div x-show="!data.topPerformers || data.topPerformers.length === 0" class="px-5 py-6 text-center text-gray-400 text-sm">No data yet</div>
+            </div>
+            <div x-show="!loading" x-cloak>
+                <div class="divide-y divide-gray-50">
+                    <template x-for="emp in (data.topPerformers ?? [])" :key="emp.userId">
+                        <div class="px-5 py-3 flex items-center gap-3">
+                            <div class="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                                 x-text="emp.userName?.charAt(0) ?? '?'"></div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-900 truncate" x-text="emp.userName"></p>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <div class="flex-1 bg-gray-100 rounded-full h-1.5">
+                                        <div class="h-1.5 rounded-full bg-blue-500"
+                                             :style="`width: ${emp.completionRate ?? 0}%`"></div>
+                                    </div>
+                                    <span class="text-xs text-gray-500 whitespace-nowrap"
+                                          x-text="(emp.completionRate ?? 0) + '%'"></span>
+                                </div>
+                            </div>
+                            <div class="text-right flex-shrink-0">
+                                <p class="text-sm font-medium text-gray-900" x-text="(emp.totalCompleted ?? 0) + '/' + (emp.totalAssigned ?? 0)"></p>
+                                <p class="text-xs text-gray-400">completed</p>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="!data.topPerformers || data.topPerformers.length === 0" class="px-5 py-6 text-center text-gray-400 text-sm">No data yet</div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Inventory Status -->
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+        <!-- Low Stock skeleton -->
+        <div x-show="loading" class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 animate-pulse">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-8 h-8 bg-gray-100 rounded-lg"></div>
+                <div class="h-4 bg-gray-100 rounded w-32"></div>
+            </div>
+            <div class="h-8 bg-gray-100 rounded w-12 mb-1"></div>
+            <div class="h-3 bg-gray-100 rounded w-36"></div>
+        </div>
+        <div x-show="loading" class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 animate-pulse">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-8 h-8 bg-gray-100 rounded-lg"></div>
+                <div class="h-4 bg-gray-100 rounded w-36"></div>
+            </div>
+            <div class="h-8 bg-gray-100 rounded w-12 mb-1"></div>
+            <div class="h-3 bg-gray-100 rounded w-36"></div>
+        </div>
+        <!-- Actual content -->
+        <div x-show="!loading" x-cloak class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
             <div class="flex items-center gap-3 mb-3">
                 <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
                     <i class="fas fa-boxes text-orange-600 text-sm"></i>
                 </div>
                 <h3 class="font-semibold text-gray-800">Low Stock Materials</h3>
             </div>
-            <p class="text-3xl font-bold" :class="data.lowStockMaterials > 0 ? 'text-orange-600' : 'text-green-600'" x-text="data.lowStockMaterials ?? '—'"></p>
+            <p class="text-3xl font-bold" :class="(data.lowStockMaterials ?? 0) > 0 ? 'text-orange-600' : 'text-green-600'"
+               x-text="data.lowStockMaterials ?? '—'"></p>
             <p class="text-xs text-gray-400 mt-1">items need restocking</p>
             <a href="/Materials" class="text-xs text-blue-600 hover:underline mt-2 block">Manage inventory →</a>
         </div>
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+        <div x-show="!loading" x-cloak class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
             <div class="flex items-center gap-3 mb-3">
                 <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
                     <i class="fas fa-pills text-red-600 text-sm"></i>
                 </div>
                 <h3 class="font-semibold text-gray-800">Expiring Medications</h3>
             </div>
-            <p class="text-3xl font-bold" :class="data.expiringMedications > 0 ? 'text-red-600' : 'text-green-600'" x-text="data.expiringMedications ?? '—'"></p>
+            <p class="text-3xl font-bold" :class="(data.expiringMedications ?? 0) > 0 ? 'text-red-600' : 'text-green-600'"
+               x-text="data.expiringMedications ?? '—'"></p>
             <p class="text-xs text-gray-400 mt-1">expire within 30 days</p>
             <a href="/Medications" class="text-xs text-blue-600 hover:underline mt-2 block">Manage medications →</a>
         </div>
@@ -177,13 +244,19 @@
 function dashboardApp() {
     return {
         data: {},
+        loading: true,
         chart: null,
         async load() {
+            this.loading = true;
             try {
-                this.data = await apiRequest('GET', '/dashboard');
+                const result = await apiRequest('GET', '/dashboard');
+                this.data = result ?? {};
                 this.$nextTick(() => this.renderChart());
             } catch (e) {
                 console.error('Dashboard load failed', e);
+                this.data = {};
+            } finally {
+                this.loading = false;
             }
         },
         renderChart() {

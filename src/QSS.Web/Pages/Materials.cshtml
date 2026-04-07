@@ -3,10 +3,10 @@
 @{ ViewData["Title"] = "Materials"; }
 
 <div x-data="materialsApp()" x-init="load()">
-    <div class="flex items-center justify-between mb-6">
+    <div class="page-header">
         <div><h1 class="text-2xl font-bold text-gray-900">Materials Inventory</h1>
         <p class="text-sm text-gray-500">Track stock levels, expiration dates, and suppliers</p></div>
-        <button @@click="showCreate = true" class="btn-primary"><i class="fas fa-plus"></i> Add Material</button>
+        <button @@click="showCreate = true" class="btn-primary flex-shrink-0"><i class="fas fa-plus"></i> Add Material</button>
     </div>
 
     <!-- Summary Cards -->
@@ -48,7 +48,8 @@
     </div>
 
     <div x-show="!loading && materials.length > 0" x-cloak class="table-wrapper">
-        <table class="w-full text-sm">
+        <div class="table-scroll">
+        <table class="w-full text-sm" style="min-width:600px">
             <thead class="bg-gray-50 border-b border-gray-100">
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-gray-500">Material</th>
@@ -95,6 +96,7 @@
                 </template>
             </tbody>
         </table>
+        </div>
     </div><!-- end !loading && materials.length > 0 -->
 
     <div x-show="showCreate" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showCreate = false">
@@ -105,7 +107,7 @@
             </div>
             <form x-on:submit.prevent="createMaterial()">
                 <div class="space-y-4">
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div><label class="form-label">Name *</label>
                         <input x-model="form.name" type="text" class="form-input" required /></div>
                         <div><label class="form-label">Category</label>
@@ -128,7 +130,7 @@
                             <option value="7">Kilograms</option>
                         </select></div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div><label class="form-label">Supplier Name</label>
                         <input x-model="form.supplierName" type="text" class="form-input" /></div>
                         <div><label class="form-label">Supplier URL</label>

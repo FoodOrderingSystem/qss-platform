@@ -3,12 +3,12 @@
 @{ ViewData["Title"] = "Tasks"; }
 
 <div x-data="tasksApp()" x-init="load()">
-    <div class="flex items-center justify-between mb-6">
+    <div class="page-header">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Tasks</h1>
             <p class="text-sm text-gray-500 mt-0.5">Track, assign, and manage all quality tasks</p>
         </div>
-        <button @@click="openCreate()" class="btn-primary"><i class="fas fa-plus"></i> New Task</button>
+        <button @@click="openCreate()" class="btn-primary flex-shrink-0"><i class="fas fa-plus"></i> New Task</button>
     </div>
 
     <!-- Loading skeleton -->
@@ -30,7 +30,7 @@
 
     <div x-show="!loading" x-cloak>
         <!-- Filters -->
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5 flex flex-wrap gap-3 items-center">
+        <div class="filter-bar">
             <div class="flex gap-2 flex-wrap">
                 <button @@click="filter.status = ''; load()" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                     :class="filter.status === '' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">All</button>
@@ -43,12 +43,13 @@
                 <button @@click="filter.status = 'Overdue'; load()" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                     :class="filter.status === 'Overdue' ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100'">Overdue</button>
             </div>
-            <input type="text" x-model="filter.search" placeholder="Search tasks..." class="form-input w-auto flex-1 min-w-48 ml-auto" />
+            <input type="text" x-model="filter.search" placeholder="Search tasks..." class="form-input flex-1 min-w-0 w-full sm:w-auto sm:min-w-48 sm:ml-auto" />
         </div>
 
         <!-- Tasks Table -->
         <div class="table-wrapper">
-            <table class="w-full text-sm">
+            <div class="table-scroll">
+            <table class="w-full text-sm" style="min-width:640px">
                 <thead class="bg-gray-50 border-b border-gray-100">
                     <tr>
                         <th class="px-4 py-3 text-left font-medium text-gray-500">Task</th>
@@ -118,6 +119,7 @@
                     </tr>
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 
@@ -127,7 +129,7 @@
          x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
          @@keydown.escape.window="showDetail = false; unlockScroll()">
         <div class="absolute inset-0 bg-gray-900/40" @@click="showDetail = false; unlockScroll()"></div>
-        <div class="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl flex flex-col"
+        <div class="slideover-panel"
              x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
              x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full">
 
@@ -165,7 +167,7 @@
                         </div>
 
                         <!-- Metadata grid -->
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div class="bg-gray-50 rounded-xl p-3">
                                 <p class="text-xs text-gray-400 mb-1">Process</p>
                                 <p class="text-sm font-medium text-gray-800" x-text="selectedTask.processName || '—'"></p>
@@ -307,7 +309,7 @@
                         <label class="form-label">Description</label>
                         <textarea x-model="form.description" class="form-input" rows="2" placeholder="Describe what needs to be done..."></textarea>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="form-label">Process <span class="text-red-500">*</span></label>
                             <select x-model="form.processId" class="form-input" required>
@@ -327,7 +329,7 @@
                             </select>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="form-label">Due Date</label>
                             <input x-model="form.dueDate" type="datetime-local" class="form-input" />
@@ -344,7 +346,7 @@
                             </select>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="form-label">Room (optional)</label>
                             <select x-model="form.roomId" class="form-input">
@@ -414,7 +416,7 @@
                         <label class="form-label">Description</label>
                         <textarea x-model="editForm.description" class="form-input" rows="2"></textarea>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="form-label">Process <span class="text-red-500">*</span></label>
                             <select x-model="editForm.processId" class="form-input" required>
@@ -434,7 +436,7 @@
                             </select>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="form-label">Due Date</label>
                             <input x-model="editForm.dueDate" type="datetime-local" class="form-input" />
@@ -451,7 +453,7 @@
                             </select>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="form-label">Room (optional)</label>
                             <select x-model="editForm.roomId" class="form-input">
