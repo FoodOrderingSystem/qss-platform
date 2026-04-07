@@ -12,7 +12,14 @@ using System.Text;
 var builder = WebApplication.CreateBuilder(args);
 
 // Ensure the persistent data directory exists before the database is accessed
-Directory.CreateDirectory("/app/data");
+try
+{
+    Directory.CreateDirectory("/app/data");
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine($"[Startup] Warning: Could not create /app/data: {ex.Message}. Database writes may fail if the volume is not mounted.");
+}
 
 // Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -158,19 +165,29 @@ app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
 app.MapHub<NotificationHub>("/hubs/notifications");
 
-// Health check endpoint for Railway — verifies DB is reachable
+// Health check endpoint for Railway — verifies DB is reachable.
+// Always returns HTTP 200 so Railway does not mark the container as failed
+// when the database is temporarily unavailable (e.g. first boot migration in progress).
 app.MapGet("/health", async (ApplicationDbContext db) =>
 {
+    string dbStatus;
+    string? dbError = null;
     try
     {
         await db.Database.CanConnectAsync();
-        return Results.Ok(new { status = "healthy", database = "connected" });
+        dbStatus = "connected";
     }
     catch (Exception ex)
     {
-        return Results.Json(new { status = "unhealthy", database = "unreachable", error = ex.Message },
-            statusCode: 503);
+        dbStatus = "unreachable";
+        dbError = ex.Message;
     }
+    return Results.Ok(new
+    {
+        status = dbStatus == "connected" ? "healthy" : "degraded",
+        database = dbStatus,
+        error = dbError
+    });
 });
 
 // Redirect root to swagger

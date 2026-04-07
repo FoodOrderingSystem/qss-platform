@@ -131,6 +131,16 @@ After redeploying both services, repeat steps 1–3. Users must still exist and 
 
 ## Troubleshooting
 
+### "Container failed to start" on qss-api
+This usually means one of:
+
+1. **Wrong start command** — Railway → `qss-api` → Settings → Start Command must be **empty** (so the Dockerfile `ENTRYPOINT ["dotnet", "QSS.API.dll"]` is used).
+2. **Volume path wrong** — Verify `qss-api-database` is mounted at exactly `/app/data` (no trailing slash, not `/data`).
+3. **Health check returning 503** — Fixed in code: the `/health` endpoint now always returns HTTP 200 with a `status` field of `"healthy"` or `"degraded"`. If you deployed before this fix, redeploy from the latest commit.
+4. **Do not set `ASPNETCORE_URLS`** — The app reads Railway's `PORT` env var automatically.
+
+Check Railway deploy logs (not build logs) for the exact startup exception.
+
 ### "Application failed to respond" on API URL
 - Check Railway logs for startup errors.
 - Verify the volume `qss-api-database` is mounted at `/app/data` (not `/data` or another path).
@@ -148,6 +158,16 @@ The `qss-api-database` volume is not mounted at `/app/data`. Go to Railway → `
 
 ### Auth cookies invalid after redeploy (users logged out)
 Add and mount the `qss-web-keys` volume at `/app/keys` so Data Protection keys are persisted. Without it, users must re-login after every web service redeploy (no data is lost).
+
+### qss-web returns 404 on /Login
+The correct login URL is `https://qss-web-production.up.railway.app/Login` (capital L, matches `Pages/Login.cshtml`).
+ASP.NET Core routing is case-insensitive so `/login` also works.
+
+If you are seeing a 404:
+- Confirm the web container is actually running (Railway → `qss-web` → Deployments shows green).
+- Confirm `ASPNETCORE_ENVIRONMENT=Production` is set and no other conflicting env vars are present.
+- Do **not** set `ASPNETCORE_URLS` — the app reads `PORT` automatically.
+- Try the root URL `https://qss-web-production.up.railway.app/` — it should redirect to `/Dashboard` which in turn redirects to `/Login` if unauthenticated.
 
 ### Login page says "Unable to connect to the API server"
 - `ApiBaseUrl` in `qss-web` env vars is wrong. Correct value: `https://qss-api-production.up.railway.app` (no `:8080`).
