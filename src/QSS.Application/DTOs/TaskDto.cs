@@ -22,7 +22,10 @@ public class TaskDto
     public int? DeviceId { get; set; }
     public string? DeviceName { get; set; }
     public int? DependsOnTaskId { get; set; }
+    public string? DependsOnTaskName { get; set; }
+    public bool IsBlocked { get; set; }
     public DateTime CreatedAt { get; set; }
+    public List<TaskCommentDto> Comments { get; set; } = new();
 }
 
 public class CreateTaskDto
@@ -37,9 +40,12 @@ public class CreateTaskDto
     public int? RoomId { get; set; }
     public int? DeviceId { get; set; }
     public int? DependsOnTaskId { get; set; }
+    public string? AttachmentUrl { get; set; }
+    public string? AttachmentName { get; set; }
 }
 
 public class UpdateTaskStatusDto
 {
     public QssTaskStatus Status { get; set; }
 }
+

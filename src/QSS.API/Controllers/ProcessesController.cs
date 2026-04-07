@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QSS.Application.DTOs;
 using QSS.Domain.Entities;
+using QSS.Domain.Enums;
 using QSS.Infrastructure.Data;
 using System.Security.Claims;
 
@@ -29,7 +30,7 @@ public class ProcessesController : ControllerBase
                 Description = p.Description,
                 Category = p.Category.ToString(),
                 IsActive = p.IsActive,
-                TaskCount = p.Tasks.Count,
+                TaskCount = p.Tasks.Count(t => !t.IsDeleted),
                 CreatedAt = p.CreatedAt
             }).ToListAsync();
         return Ok(processes);
@@ -38,13 +39,37 @@ public class ProcessesController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
-        var p = await _db.Processes.Include(p => p.Tasks).FirstOrDefaultAsync(p => p.Id == id);
+        var p = await _db.Processes
+            .Include(p => p.Tasks.Where(t => !t.IsDeleted))
+            .ThenInclude(t => t.Assignee)
+            .FirstOrDefaultAsync(p => p.Id == id);
         if (p == null) return NotFound();
-        return Ok(new ProcessDto
+
+        var now = DateTime.UtcNow;
+        var tasks = p.Tasks.Where(t => !t.IsDeleted).ToList();
+
+        return Ok(new ProcessDetailDto
         {
-            Id = p.Id, Name = p.Name, Description = p.Description,
-            Category = p.Category.ToString(), IsActive = p.IsActive,
-            TaskCount = p.Tasks.Count, CreatedAt = p.CreatedAt
+            Id = p.Id,
+            Name = p.Name,
+            Description = p.Description,
+            Category = p.Category.ToString(),
+            IsActive = p.IsActive,
+            TaskCount = tasks.Count,
+            CompletedTaskCount = tasks.Count(t => t.Status == QssTaskStatus.Completed),
+            OverdueTaskCount = tasks.Count(t => t.Status == QssTaskStatus.Overdue ||
+                (t.DueDate.HasValue && t.DueDate < now && t.Status != QssTaskStatus.Completed)),
+            CreatedAt = p.CreatedAt,
+            Tasks = tasks.Select(t => new ProcessTaskSummaryDto
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Status = t.Status.ToString(),
+                DueDate = t.DueDate,
+                AssigneeName = t.Assignee?.FullName,
+                IsOverdue = t.Status == QssTaskStatus.Overdue ||
+                    (t.DueDate.HasValue && t.DueDate < now && t.Status != QssTaskStatus.Completed)
+            }).OrderBy(t => t.DueDate).ToList()
         });
     }
 
@@ -84,6 +109,9 @@ public class ProcessesController : ControllerBase
     {
         var process = await _db.Processes.FindAsync(id);
         if (process == null) return NotFound();
+        var hasActiveTasks = await _db.Tasks.AnyAsync(t => t.ProcessId == id && !t.IsDeleted);
+        if (hasActiveTasks)
+            return BadRequest(new { message = "Cannot delete a process that has active tasks. Delete or reassign tasks first." });
         process.IsDeleted = true;
         await _db.SaveChangesAsync();
         return NoContent();

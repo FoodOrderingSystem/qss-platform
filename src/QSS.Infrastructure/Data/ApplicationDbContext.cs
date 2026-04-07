@@ -22,6 +22,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<AppNotification> Notifications => Set<AppNotification>();
     public DbSet<LearningMaterial> LearningMaterials => Set<LearningMaterial>();
     public DbSet<LearningProgress> LearningProgress => Set<LearningProgress>();
+    public DbSet<DeviceHistory> DeviceHistories => Set<DeviceHistory>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -105,6 +106,25 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<Material>().HasQueryFilter(m => !m.IsDeleted);
         builder.Entity<Medication>().HasQueryFilter(m => !m.IsDeleted);
         builder.Entity<LearningMaterial>().HasQueryFilter(l => !l.IsDeleted);
+
+        // DeviceHistory relationships
+        builder.Entity<DeviceHistory>()
+            .HasOne(h => h.Device)
+            .WithMany(d => d.History)
+            .HasForeignKey(h => h.DeviceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<DeviceHistory>()
+            .HasOne(h => h.PerformedBy)
+            .WithMany()
+            .HasForeignKey(h => h.PerformedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<DeviceHistory>()
+            .HasOne(h => h.LinkedTask)
+            .WithMany()
+            .HasForeignKey(h => h.LinkedTaskId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 
     public override int SaveChanges()

@@ -1,18 +1,14 @@
 @page
 @model QSS.Web.Pages.TasksModel
-@{
-    ViewData["Title"] = "Tasks";
-}
+@{ ViewData["Title"] = "Tasks"; }
 
 <div x-data="tasksApp()" x-init="load()">
     <div class="flex items-center justify-between mb-6">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Tasks</h1>
-            <p class="text-sm text-gray-500 mt-0.5">Manage and track all tasks</p>
+            <p class="text-sm text-gray-500 mt-0.5">Track, assign, and manage all quality tasks</p>
         </div>
-        <button @@click="openCreate()" class="btn-primary">
-            <i class="fas fa-plus"></i> New Task
-        </button>
+        <button @@click="openCreate()" class="btn-primary"><i class="fas fa-plus"></i> New Task</button>
     </div>
 
     <!-- Loading skeleton -->
@@ -33,100 +29,284 @@
     </div>
 
     <div x-show="!loading">
+        <!-- Filters -->
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5 flex flex-wrap gap-3 items-center">
+            <div class="flex gap-2 flex-wrap">
+                <button @@click="filter.status = ''; load()" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                    :class="filter.status === '' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">All</button>
+                <button @@click="filter.status = 'Open'; load()" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                    :class="filter.status === 'Open' ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">Open</button>
+                <button @@click="filter.status = 'InProgress'; load()" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                    :class="filter.status === 'InProgress' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'">In Progress</button>
+                <button @@click="filter.status = 'Completed'; load()" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                    :class="filter.status === 'Completed' ? 'bg-green-600 text-white' : 'bg-green-50 text-green-700 hover:bg-green-100'">Completed</button>
+                <button @@click="filter.status = 'Overdue'; load()" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                    :class="filter.status === 'Overdue' ? 'bg-red-600 text-white' : 'bg-red-50 text-red-700 hover:bg-red-100'">Overdue</button>
+            </div>
+            <input type="text" x-model="filter.search" placeholder="Search tasks..." class="form-input w-auto flex-1 min-w-48 ml-auto" />
+        </div>
 
-    <!-- Filters -->
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5 flex flex-wrap gap-3">
-        <select x-model="filter.status" @@change="load()" class="form-input w-auto">
-            <option value="">All Statuses</option>
-            <option value="Open">Open</option>
-            <option value="InProgress">In Progress</option>
-            <option value="Completed">Completed</option>
-            <option value="Overdue">Overdue</option>
-        </select>
-        <input type="text" x-model="filter.search" placeholder="Search tasks..." class="form-input w-auto flex-1 min-w-48" />
-    </div>
-
-    <!-- Tasks Table -->
-    <div class="table-wrapper">
-        <table class="w-full text-sm">
-            <thead class="bg-gray-50 border-b border-gray-100">
-                <tr>
-                    <th class="px-4 py-3 text-left font-medium text-gray-500">Task Name</th>
-                    <th class="px-4 py-3 text-left font-medium text-gray-500">Process</th>
-                    <th class="px-4 py-3 text-left font-medium text-gray-500">Assignee</th>
-                    <th class="px-4 py-3 text-left font-medium text-gray-500">Due Date</th>
-                    <th class="px-4 py-3 text-left font-medium text-gray-500">Frequency</th>
-                    <th class="px-4 py-3 text-left font-medium text-gray-500">Status</th>
-                    <th class="px-4 py-3 text-right font-medium text-gray-500">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-50">
-                <template x-for="task in filteredTasks" :key="task.id">
-                    <tr class="hover:bg-gray-50 transition-colors"
-                        :class="task.status === 'Overdue' ? 'bg-red-50 hover:bg-red-100' : (task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Completed' ? 'bg-amber-50 hover:bg-amber-100' : '')">
-                        <td class="px-4 py-3">
-                            <button @@click="openDetail(task)" class="font-medium text-gray-900 hover:text-blue-600 text-left">
-                                <span x-text="task.name"></span>
-                            </button>
-                            <p class="text-xs text-gray-400 mt-0.5" x-text="task.description?.substring(0, 60) + (task.description?.length > 60 ? '...' : '')"></p>
-                        </td>
-                        <td class="px-4 py-3 text-gray-600" x-text="task.processName ?? '—'"></td>
-                        <td class="px-4 py-3 text-gray-600" x-text="task.assigneeName ?? '—'"></td>
-                        <td class="px-4 py-3">
-                            <span :class="task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Completed' ? 'text-red-600 font-medium' : 'text-gray-600'"
-                                  x-text="formatDate(task.dueDate)"></span>
-                        </td>
-                        <td class="px-4 py-3 text-gray-500 text-xs" x-text="task.frequency"></td>
-                        <td class="px-4 py-3">
-                            <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="statusBadge(task.status)" x-text="task.status"></span>
-                        </td>
-                        <td class="px-4 py-3 text-right">
-                            <div class="flex items-center justify-end gap-1">
+        <!-- Tasks Table -->
+        <div class="table-wrapper">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                        <th class="px-4 py-3 text-left font-medium text-gray-500">Task</th>
+                        <th class="px-4 py-3 text-left font-medium text-gray-500">Process</th>
+                        <th class="px-4 py-3 text-left font-medium text-gray-500">Assignee</th>
+                        <th class="px-4 py-3 text-left font-medium text-gray-500">Due Date</th>
+                        <th class="px-4 py-3 text-left font-medium text-gray-500">Frequency</th>
+                        <th class="px-4 py-3 text-left font-medium text-gray-500">Status</th>
+                        <th class="px-4 py-3 text-right font-medium text-gray-500">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    <template x-for="task in filteredTasks" :key="task.id">
+                        <tr class="hover:bg-gray-50 transition-colors cursor-pointer"
+                            :class="task.status === 'Overdue' ? 'bg-red-50/50' : (task.isBlocked ? 'bg-amber-50/40' : '')"
+                            @@click="openDetail(task.id)">
+                            <td class="px-4 py-3">
+                                <div class="flex items-start gap-2">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2">
+                                            <span class="font-medium text-gray-900 hover:text-blue-600" x-text="task.name"></span>
+                                            <span x-show="task.isBlocked" class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium whitespace-nowrap">
+                                                <i class="fas fa-lock text-xs mr-0.5"></i>Blocked
+                                            </span>
+                                        </div>
+                                        <p class="text-xs text-gray-400 mt-0.5 line-clamp-1" x-text="task.description?.substring(0, 70) + (task.description?.length > 70 ? '...' : '')"></p>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-4 py-3 text-gray-600 text-xs" x-text="task.processName ?? '—'"></td>
+                            <td class="px-4 py-3 text-gray-600 text-xs" x-text="task.assigneeName ?? '—'"></td>
+                            <td class="px-4 py-3">
+                                <span class="text-xs" :class="task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Completed' ? 'text-red-600 font-semibold' : 'text-gray-600'"
+                                      x-text="formatDate(task.dueDate)"></span>
+                            </td>
+                            <td class="px-4 py-3 text-gray-400 text-xs" x-text="task.frequency"></td>
+                            <td class="px-4 py-3" @@click.stop>
                                 <select @@change="updateStatus(task.id, $event.target.value)"
-                                        class="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600">
-                                    <option value="">Change status</option>
-                                    <option value="0">Open</option>
-                                    <option value="1">In Progress</option>
-                                    <option value="2">Complete</option>
+                                        class="text-xs border border-gray-200 rounded-lg px-2 py-1 text-gray-600 cursor-pointer hover:border-blue-300 transition-colors"
+                                        :class="statusSelectColor(task.status)"
+                                        :value="task.status">
+                                    <option value="Open">Open</option>
+                                    <option value="InProgress">In Progress</option>
+                                    <option value="Completed">Completed</option>
                                 </select>
-                                <button @@click="deleteTask(task.id)" class="text-red-400 hover:text-red-600 p-1 ml-1">
-                                    <i class="fas fa-trash text-xs"></i>
-                                </button>
+                            </td>
+                            <td class="px-4 py-3 text-right" @@click.stop>
+                                <div class="flex items-center justify-end gap-1">
+                                    <button @@click="openEdit(task.id)" class="text-gray-400 hover:text-blue-600 p-1.5 rounded hover:bg-blue-50 transition-colors" title="Edit task">
+                                        <i class="fas fa-pencil text-xs"></i>
+                                    </button>
+                                    <button @@click="deleteTask(task.id)" class="text-red-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition-colors" title="Delete task">
+                                        <i class="fas fa-trash text-xs"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                    <tr x-show="filteredTasks.length === 0 && !loading">
+                        <td colspan="7" class="px-4 py-16 text-center">
+                            <div class="flex flex-col items-center gap-2">
+                                <i class="fas fa-clipboard-list text-3xl text-gray-200"></i>
+                                <p class="text-gray-400 font-medium">No tasks found</p>
+                                <p class="text-xs text-gray-300" x-text="filter.status || filter.search ? 'Try adjusting your filters' : 'Click &quot;New Task&quot; to create the first task'"></p>
                             </div>
                         </td>
                     </tr>
-                </template>
-                <tr x-show="filteredTasks.length === 0 && !loading">
-                    <td colspan="7" class="px-4 py-16 text-center">
-                        <div class="flex flex-col items-center gap-2">
-                            <i class="fas fa-clipboard-list text-3xl text-gray-200"></i>
-                            <p class="text-gray-400 font-medium">No tasks found</p>
-                            <p class="text-xs text-gray-300" x-text="filter.status || filter.search ? 'Try adjusting your filters' : 'Click &quot;New Task&quot; to create the first task'"></p>
-                        </div>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+        </div>
     </div>
-    </div><!-- end x-show="!loading" -->
+
+    <!-- Task Detail Slide-over -->
+    <div x-show="showDetail" class="fixed inset-0 z-50 overflow-hidden">
+        <div class="absolute inset-0 bg-gray-900/40" @@click="showDetail = false"></div>
+        <div class="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl flex flex-col"
+             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+             x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full">
+
+            <div x-show="detailLoading" class="flex-1 flex items-center justify-center">
+                <div class="text-center text-gray-400"><i class="fas fa-spinner fa-spin text-2xl mb-2"></i><p class="text-sm">Loading...</p></div>
+            </div>
+
+            <template x-if="!detailLoading && selectedTask">
+                <div class="flex flex-col h-full">
+                    <!-- Header -->
+                    <div class="p-6 border-b border-gray-100">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1 mr-4">
+                                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                    <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="statusBadge(selectedTask.status)" x-text="selectedTask.status"></span>
+                                    <span x-show="selectedTask.isBlocked" class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                                        <i class="fas fa-lock text-xs mr-0.5"></i>Blocked
+                                    </span>
+                                    <span x-show="selectedTask.attachmentUrl" class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                                        <i class="fas fa-paperclip text-xs mr-0.5"></i>Attachment
+                                    </span>
+                                </div>
+                                <h2 class="text-lg font-bold text-gray-900" x-text="selectedTask.name"></h2>
+                            </div>
+                            <button @@click="showDetail = false" class="text-gray-400 hover:text-gray-600 p-1 flex-shrink-0">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto p-6 space-y-5">
+                        <!-- Description -->
+                        <div x-show="selectedTask.description">
+                            <p class="text-sm text-gray-600 leading-relaxed" x-text="selectedTask.description"></p>
+                        </div>
+
+                        <!-- Metadata grid -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-gray-50 rounded-xl p-3">
+                                <p class="text-xs text-gray-400 mb-1">Process</p>
+                                <p class="text-sm font-medium text-gray-800" x-text="selectedTask.processName || '—'"></p>
+                            </div>
+                            <div class="bg-gray-50 rounded-xl p-3">
+                                <p class="text-xs text-gray-400 mb-1">Assignee</p>
+                                <p class="text-sm font-medium text-gray-800" x-text="selectedTask.assigneeName || '—'"></p>
+                            </div>
+                            <div class="rounded-xl p-3" :class="selectedTask.dueDate && new Date(selectedTask.dueDate) < new Date() && selectedTask.status !== 'Completed' ? 'bg-red-50' : 'bg-gray-50'">
+                                <p class="text-xs text-gray-400 mb-1">Due Date</p>
+                                <p class="text-sm font-medium" :class="selectedTask.dueDate && new Date(selectedTask.dueDate) < new Date() && selectedTask.status !== 'Completed' ? 'text-red-600' : 'text-gray-800'" x-text="formatDate(selectedTask.dueDate)"></p>
+                            </div>
+                            <div class="bg-gray-50 rounded-xl p-3">
+                                <p class="text-xs text-gray-400 mb-1">Frequency</p>
+                                <p class="text-sm font-medium text-gray-800" x-text="selectedTask.frequency"></p>
+                            </div>
+                            <div x-show="selectedTask.roomName" class="bg-gray-50 rounded-xl p-3">
+                                <p class="text-xs text-gray-400 mb-1">Room</p>
+                                <p class="text-sm font-medium text-gray-800" x-text="selectedTask.roomName"></p>
+                            </div>
+                            <div x-show="selectedTask.deviceName" class="bg-gray-50 rounded-xl p-3">
+                                <p class="text-xs text-gray-400 mb-1">Device</p>
+                                <p class="text-sm font-medium text-gray-800" x-text="selectedTask.deviceName"></p>
+                            </div>
+                        </div>
+
+                        <!-- Dependency -->
+                        <div x-show="selectedTask.dependsOnTaskId" class="border border-amber-200 rounded-xl p-4 bg-amber-50">
+                            <div class="flex items-start gap-3">
+                                <i class="fas fa-link text-amber-500 mt-0.5 flex-shrink-0"></i>
+                                <div>
+                                    <p class="text-xs font-semibold text-amber-800 mb-0.5">Depends on task</p>
+                                    <p class="text-sm text-amber-700" x-text="selectedTask.dependsOnTaskName || ('Task #' + selectedTask.dependsOnTaskId)"></p>
+                                    <p x-show="selectedTask.isBlocked" class="text-xs text-amber-600 mt-1">
+                                        <i class="fas fa-info-circle mr-1"></i>This task is blocked until the prerequisite task is completed.
+                                    </p>
+                                    <p x-show="!selectedTask.isBlocked && selectedTask.dependsOnTaskId" class="text-xs text-green-600 mt-1">
+                                        <i class="fas fa-check-circle mr-1"></i>Prerequisite completed — this task is now active.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Attachment -->
+                        <div x-show="selectedTask.attachmentUrl" class="border border-purple-200 rounded-xl p-4 bg-purple-50">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <i class="fas fa-paperclip text-purple-500"></i>
+                                    <div>
+                                        <p class="text-xs font-semibold text-purple-800 mb-0.5">Instructional Material</p>
+                                        <p class="text-sm text-purple-700" x-text="selectedTask.attachmentName || 'Attached document'"></p>
+                                    </div>
+                                </div>
+                                <a :href="selectedTask.attachmentUrl" target="_blank" class="text-xs bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 transition-colors">
+                                    <i class="fas fa-external-link-alt mr-1"></i>Open
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Status changer -->
+                        <div>
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Update Status</p>
+                            <div class="flex gap-2">
+                                <button @@click="updateStatusAndRefresh(selectedTask.id, 0)"
+                                    class="flex-1 py-2 rounded-lg text-xs font-medium border transition-colors"
+                                    :class="selectedTask.status === 'Open' ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-200 text-gray-600 hover:bg-gray-50'">
+                                    Open
+                                </button>
+                                <button @@click="updateStatusAndRefresh(selectedTask.id, 1)"
+                                    class="flex-1 py-2 rounded-lg text-xs font-medium border transition-colors"
+                                    :class="selectedTask.status === 'InProgress' ? 'bg-blue-600 text-white border-blue-600' : 'border-blue-200 text-blue-600 hover:bg-blue-50'">
+                                    In Progress
+                                </button>
+                                <button @@click="updateStatusAndRefresh(selectedTask.id, 2)"
+                                    class="flex-1 py-2 rounded-lg text-xs font-medium border transition-colors"
+                                    :class="selectedTask.status === 'Completed' ? 'bg-green-600 text-white border-green-600' : 'border-green-200 text-green-600 hover:bg-green-50'">
+                                    Complete
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Comments -->
+                        <div class="border-t pt-5">
+                            <h3 class="text-sm font-semibold text-gray-700 mb-3">Comments</h3>
+                            <div class="space-y-3 max-h-48 overflow-y-auto mb-3">
+                                <template x-for="c in selectedTask.comments" :key="c.id">
+                                    <div class="bg-gray-50 rounded-xl p-3">
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <span class="text-xs font-semibold text-gray-800" x-text="c.authorName"></span>
+                                            <span class="text-xs text-gray-400" x-text="formatDateTime(c.createdAt)"></span>
+                                        </div>
+                                        <p class="text-sm text-gray-700" x-text="c.content"></p>
+                                    </div>
+                                </template>
+                                <div x-show="!selectedTask.comments || selectedTask.comments.length === 0" class="text-xs text-gray-400 text-center py-4">No comments yet</div>
+                            </div>
+                            <div class="flex gap-2">
+                                <input x-model="newComment" type="text" placeholder="Add a comment..." class="form-input flex-1 text-xs" @@keydown.enter="addComment()" />
+                                <button @@click="addComment()" class="btn-primary text-xs px-3 py-2">Post</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="p-4 border-t border-gray-100 flex justify-between bg-gray-50">
+                        <button @@click="showDetail = false; deleteTask(selectedTask.id)"
+                                class="text-sm text-red-500 hover:text-red-700 flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors">
+                            <i class="fas fa-trash text-xs"></i> Delete
+                        </button>
+                        <div class="flex gap-2">
+                            <button @@click="showDetail = false" class="btn-secondary text-sm">Close</button>
+                            <button @@click="showDetail = false; openEdit(selectedTask.id)" class="btn-primary text-sm">
+                                <i class="fas fa-pencil mr-1"></i> Edit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
 
     <!-- Create Task Modal -->
     <div x-show="showCreate" class="modal-backdrop" x-transition>
-        <div class="modal p-6">
-            <h2 class="text-lg font-bold text-gray-900 mb-5">Create New Task</h2>
+        <div class="modal p-6" style="max-width:580px">
+            <div class="flex items-center justify-between mb-5">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900">Create New Task</h2>
+                    <p class="text-xs text-gray-400 mt-0.5">Define a task, assign it, and link to a process</p>
+                </div>
+                <button @@click="showCreate = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
             <form x-on:submit.prevent="createTask()">
-                <div class="space-y-4">
+                <div class="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
                     <div>
-                        <label class="form-label">Task Name *</label>
-                        <input x-model="form.name" type="text" class="form-input" required />
+                        <label class="form-label">Task Name <span class="text-red-500">*</span></label>
+                        <input x-model="form.name" type="text" class="form-input" required placeholder="e.g. Sterilize autoclave instruments" />
                     </div>
                     <div>
                         <label class="form-label">Description</label>
-                        <textarea x-model="form.description" class="form-input" rows="2"></textarea>
+                        <textarea x-model="form.description" class="form-input" rows="2" placeholder="Describe what needs to be done..."></textarea>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="form-label">Process *</label>
+                            <label class="form-label">Process <span class="text-red-500">*</span></label>
                             <select x-model="form.processId" class="form-input" required>
                                 <option value="">Select process</option>
                                 <template x-for="p in processes" :key="p.id">
@@ -135,7 +315,7 @@
                             </select>
                         </div>
                         <div>
-                            <label class="form-label">Assignee *</label>
+                            <label class="form-label">Assignee <span class="text-red-500">*</span></label>
                             <select x-model="form.assigneeId" class="form-input" required>
                                 <option value="">Select user</option>
                                 <template x-for="u in users" :key="u.id">
@@ -181,61 +361,139 @@
                             </select>
                         </div>
                     </div>
+                    <div>
+                        <label class="form-label">Depends on Task (optional)</label>
+                        <select x-model="form.dependsOnTaskId" class="form-input">
+                            <option value="">No dependency</option>
+                            <template x-for="t in tasks" :key="t.id">
+                                <option :value="t.id" x-text="t.name + ' (' + t.status + ')'"></option>
+                            </template>
+                        </select>
+                        <p class="text-xs text-gray-400 mt-1">If set, this task will be blocked until the prerequisite is completed.</p>
+                    </div>
+                    <div class="border border-gray-200 rounded-xl p-4 space-y-3">
+                        <p class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Instructional Material / Attachment</p>
+                        <div>
+                            <label class="form-label">Attachment URL</label>
+                            <input x-model="form.attachmentUrl" type="url" class="form-input" placeholder="https://..." />
+                        </div>
+                        <div>
+                            <label class="form-label">Attachment Name</label>
+                            <input x-model="form.attachmentName" type="text" class="form-input" placeholder="e.g. Sterilization Protocol v2.pdf" />
+                        </div>
+                    </div>
                 </div>
-                <div class="flex justify-end gap-3 mt-6">
+                <div class="flex justify-end gap-3 mt-5">
                     <button type="button" @@click="showCreate = false" class="btn-secondary">Cancel</button>
-                    <button type="submit" class="btn-primary">Create Task</button>
+                    <button type="submit" class="btn-primary" :disabled="saving" x-text="saving ? 'Creating...' : 'Create Task'"></button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Task Detail Modal -->
-    <div x-show="showDetail && selectedTask" class="modal-backdrop" x-transition>
-        <div class="modal p-6" style="max-width: 600px">
-            <div class="flex items-start justify-between mb-4">
+    <!-- Edit Task Modal -->
+    <div x-show="showEdit" class="modal-backdrop" x-transition>
+        <div class="modal p-6" style="max-width:580px">
+            <div class="flex items-center justify-between mb-5">
                 <div>
-                    <h2 class="text-lg font-bold text-gray-900" x-text="selectedTask?.name"></h2>
-                    <span class="text-xs px-2 py-0.5 rounded-full font-medium mt-1 inline-block"
-                          :class="statusBadge(selectedTask?.status)" x-text="selectedTask?.status"></span>
+                    <h2 class="text-lg font-bold text-gray-900">Edit Task</h2>
+                    <p class="text-xs text-gray-400 mt-0.5">Update task details and assignments</p>
                 </div>
-                <button @@click="showDetail = false" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times"></i>
-                </button>
+                <button @@click="showEdit = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
             </div>
-
-            <div class="text-sm text-gray-600 space-y-2 mb-5">
-                <p x-show="selectedTask?.description" x-text="selectedTask?.description"></p>
-                <div class="grid grid-cols-2 gap-2 text-xs">
-                    <div><span class="text-gray-400">Process:</span> <span x-text="selectedTask?.processName"></span></div>
-                    <div><span class="text-gray-400">Assignee:</span> <span x-text="selectedTask?.assigneeName"></span></div>
-                    <div><span class="text-gray-400">Due:</span> <span x-text="formatDate(selectedTask?.dueDate)"></span></div>
-                    <div><span class="text-gray-400">Frequency:</span> <span x-text="selectedTask?.frequency"></span></div>
-                    <div x-show="selectedTask?.roomName"><span class="text-gray-400">Room:</span> <span x-text="selectedTask?.roomName"></span></div>
-                    <div x-show="selectedTask?.deviceName"><span class="text-gray-400">Device:</span> <span x-text="selectedTask?.deviceName"></span></div>
-                </div>
-            </div>
-
-            <!-- Comments -->
-            <div class="border-t pt-4">
-                <h3 class="text-sm font-semibold text-gray-800 mb-3">Comments</h3>
-                <div class="space-y-3 max-h-40 overflow-y-auto mb-3">
-                    <template x-for="c in comments" :key="c.id">
-                        <div class="bg-gray-50 rounded-lg p-3">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="text-xs font-medium text-gray-800" x-text="c.authorName"></span>
-                                <span class="text-xs text-gray-400" x-text="formatDateTime(c.createdAt)"></span>
-                            </div>
-                            <p class="text-sm text-gray-700" x-text="c.content"></p>
+            <form x-on:submit.prevent="updateTask()">
+                <div class="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
+                    <div>
+                        <label class="form-label">Task Name <span class="text-red-500">*</span></label>
+                        <input x-model="editForm.name" type="text" class="form-input" required />
+                    </div>
+                    <div>
+                        <label class="form-label">Description</label>
+                        <textarea x-model="editForm.description" class="form-input" rows="2"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label">Process <span class="text-red-500">*</span></label>
+                            <select x-model="editForm.processId" class="form-input" required>
+                                <option value="">Select process</option>
+                                <template x-for="p in processes" :key="p.id">
+                                    <option :value="p.id" x-text="p.name"></option>
+                                </template>
+                            </select>
                         </div>
-                    </template>
-                    <div x-show="comments.length === 0" class="text-xs text-gray-400 text-center py-2">No comments yet</div>
+                        <div>
+                            <label class="form-label">Assignee <span class="text-red-500">*</span></label>
+                            <select x-model="editForm.assigneeId" class="form-input" required>
+                                <option value="">Select user</option>
+                                <template x-for="u in users" :key="u.id">
+                                    <option :value="u.id" x-text="u.fullName + ' (' + u.role + ')'"></option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label">Due Date</label>
+                            <input x-model="editForm.dueDate" type="datetime-local" class="form-input" />
+                        </div>
+                        <div>
+                            <label class="form-label">Frequency</label>
+                            <select x-model="editForm.frequency" class="form-input">
+                                <option value="0">Once</option>
+                                <option value="1">Daily</option>
+                                <option value="2">Weekly</option>
+                                <option value="3">Monthly</option>
+                                <option value="4">Quarterly</option>
+                                <option value="5">Yearly</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="form-label">Room (optional)</label>
+                            <select x-model="editForm.roomId" class="form-input">
+                                <option value="">No room</option>
+                                <template x-for="r in rooms" :key="r.id">
+                                    <option :value="r.id" x-text="r.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Device (optional)</label>
+                            <select x-model="editForm.deviceId" class="form-input">
+                                <option value="">No device</option>
+                                <template x-for="d in devices" :key="d.id">
+                                    <option :value="d.id" x-text="d.name"></option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label">Depends on Task (optional)</label>
+                        <select x-model="editForm.dependsOnTaskId" class="form-input">
+                            <option value="">No dependency</option>
+                            <template x-for="t in tasks.filter(t => t.id !== editForm.id)" :key="t.id">
+                                <option :value="t.id" x-text="t.name + ' (' + t.status + ')'"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="border border-gray-200 rounded-xl p-4 space-y-3">
+                        <p class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Instructional Material / Attachment</p>
+                        <div>
+                            <label class="form-label">Attachment URL</label>
+                            <input x-model="editForm.attachmentUrl" type="url" class="form-input" placeholder="https://..." />
+                        </div>
+                        <div>
+                            <label class="form-label">Attachment Name</label>
+                            <input x-model="editForm.attachmentName" type="text" class="form-input" />
+                        </div>
+                    </div>
                 </div>
-                <div class="flex gap-2">
-                    <input x-model="newComment" type="text" placeholder="Add a comment..." class="form-input flex-1 text-xs" />
-                    <button @@click="addComment()" class="btn-primary text-xs px-3">Post</button>
+                <div class="flex justify-end gap-3 mt-5">
+                    <button type="button" @@click="showEdit = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary" :disabled="saving" x-text="saving ? 'Saving...' : 'Save Changes'"></button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 </div>
@@ -244,11 +502,13 @@
 <script>
 function tasksApp() {
     return {
-        tasks: [], processes: [], users: [], rooms: [], devices: [], comments: [],
+        tasks: [], processes: [], users: [], rooms: [], devices: [],
         filter: { status: '', search: '' },
-        loading: true,
-        showCreate: false, showDetail: false, selectedTask: null, newComment: '',
-        form: { name: '', description: '', processId: '', assigneeId: '', dueDate: '', frequency: '0', roomId: '', deviceId: '' },
+        loading: true, saving: false,
+        showCreate: false, showEdit: false, showDetail: false,
+        selectedTask: null, detailLoading: false, newComment: '',
+        form: { name: '', description: '', processId: '', assigneeId: '', dueDate: '', frequency: '0', roomId: '', deviceId: '', dependsOnTaskId: '', attachmentUrl: '', attachmentName: '' },
+        editForm: { id: null, name: '', description: '', processId: '', assigneeId: '', dueDate: '', frequency: '0', roomId: '', deviceId: '', dependsOnTaskId: '', attachmentUrl: '', attachmentName: '' },
 
         get filteredTasks() {
             return this.tasks.filter(t => {
@@ -268,15 +528,61 @@ function tasksApp() {
         },
 
         async openCreate() {
-            this.processes = await apiRequest('GET', '/processes');
-            this.users = await apiRequest('GET', '/users');
-            this.rooms = await apiRequest('GET', '/rooms');
-            this.devices = await apiRequest('GET', '/devices');
-            this.form = { name: '', description: '', processId: '', assigneeId: '', dueDate: '', frequency: '0', roomId: '', deviceId: '' };
+            const [p, u, r, d] = await Promise.all([
+                apiRequest('GET', '/processes').catch(() => []),
+                apiRequest('GET', '/users').catch(() => []),
+                apiRequest('GET', '/rooms').catch(() => []),
+                apiRequest('GET', '/devices').catch(() => [])
+            ]);
+            this.processes = p; this.users = u; this.rooms = r; this.devices = d;
+            this.form = { name: '', description: '', processId: '', assigneeId: '', dueDate: '', frequency: '0', roomId: '', deviceId: '', dependsOnTaskId: '', attachmentUrl: '', attachmentName: '' };
             this.showCreate = true;
         },
 
+        async openEdit(taskId) {
+            const [p, u, r, d] = await Promise.all([
+                apiRequest('GET', '/processes').catch(() => []),
+                apiRequest('GET', '/users').catch(() => []),
+                apiRequest('GET', '/rooms').catch(() => []),
+                apiRequest('GET', '/devices').catch(() => [])
+            ]);
+            this.processes = p; this.users = u; this.rooms = r; this.devices = d;
+            const task = this.tasks.find(t => t.id === taskId) || await apiRequest('GET', `/tasks/${taskId}`);
+            const freqMap = { Once: '0', Daily: '1', Weekly: '2', Monthly: '3', Quarterly: '4', Yearly: '5' };
+            this.editForm = {
+                id: task.id,
+                name: task.name,
+                description: task.description || '',
+                processId: task.processId,
+                assigneeId: task.assigneeId,
+                dueDate: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : '',
+                frequency: freqMap[task.frequency] ?? '0',
+                roomId: task.roomId || '',
+                deviceId: task.deviceId || '',
+                dependsOnTaskId: task.dependsOnTaskId || '',
+                attachmentUrl: task.attachmentUrl || '',
+                attachmentName: task.attachmentName || ''
+            };
+            this.showEdit = true;
+        },
+
+        async openDetail(taskId) {
+            this.showDetail = true;
+            this.detailLoading = true;
+            this.selectedTask = null;
+            this.newComment = '';
+            try {
+                this.selectedTask = await apiRequest('GET', `/tasks/${taskId}`);
+            } catch(e) {
+                showToast('Failed to load task details', 'error');
+                this.showDetail = false;
+            } finally {
+                this.detailLoading = false;
+            }
+        },
+
         async createTask() {
+            this.saving = true;
             try {
                 await apiRequest('POST', '/tasks', {
                     name: this.form.name,
@@ -287,51 +593,101 @@ function tasksApp() {
                     frequency: parseInt(this.form.frequency),
                     roomId: this.form.roomId ? parseInt(this.form.roomId) : null,
                     deviceId: this.form.deviceId ? parseInt(this.form.deviceId) : null,
+                    dependsOnTaskId: this.form.dependsOnTaskId ? parseInt(this.form.dependsOnTaskId) : null,
+                    attachmentUrl: this.form.attachmentUrl || null,
+                    attachmentName: this.form.attachmentName || null,
                     status: 0
                 });
                 this.showCreate = false;
                 await this.load();
                 showToast('Task created successfully');
-            } catch (e) { showToast('Failed to create task', 'error'); }
+            } catch(e) { showToast('Failed to create task', 'error'); }
+            finally { this.saving = false; }
         },
 
-        async openDetail(task) {
-            this.selectedTask = task;
-            this.comments = [];
-            this.newComment = '';
-            this.showDetail = true;
+        async updateTask() {
+            this.saving = true;
             try {
-                const detail = await apiRequest('GET', `/tasks/${task.id}`);
-                this.comments = detail.comments ?? [];
-            } catch (e) {}
+                await apiRequest('PUT', `/tasks/${this.editForm.id}`, {
+                    name: this.editForm.name,
+                    description: this.editForm.description,
+                    processId: parseInt(this.editForm.processId),
+                    assigneeId: this.editForm.assigneeId,
+                    dueDate: this.editForm.dueDate || null,
+                    frequency: parseInt(this.editForm.frequency),
+                    roomId: this.editForm.roomId ? parseInt(this.editForm.roomId) : null,
+                    deviceId: this.editForm.deviceId ? parseInt(this.editForm.deviceId) : null,
+                    dependsOnTaskId: this.editForm.dependsOnTaskId ? parseInt(this.editForm.dependsOnTaskId) : null,
+                    attachmentUrl: this.editForm.attachmentUrl || null,
+                    attachmentName: this.editForm.attachmentName || null,
+                    status: 0
+                });
+                this.showEdit = false;
+                await this.load();
+                showToast('Task updated successfully');
+            } catch(e) { showToast('Failed to update task', 'error'); }
+            finally { this.saving = false; }
         },
 
         async addComment() {
             if (!this.newComment.trim()) return;
             try {
                 await apiRequest('POST', `/tasks/${this.selectedTask.id}/comments`, { content: this.newComment });
-                const detail = await apiRequest('GET', `/tasks/${this.selectedTask.id}`);
-                this.comments = detail.comments ?? [];
+                this.selectedTask = await apiRequest('GET', `/tasks/${this.selectedTask.id}`);
                 this.newComment = '';
-            } catch (e) { showToast('Failed to add comment', 'error'); }
+                showToast('Comment added');
+            } catch(e) { showToast('Failed to add comment', 'error'); }
         },
 
-        async updateStatus(id, status) {
-            if (!status) return;
+        async updateStatus(id, statusValue) {
+            if (!statusValue) return;
+            const statusMap = { Open: 0, InProgress: 1, Completed: 2 };
+            const status = isNaN(statusValue) ? (statusMap[statusValue] ?? 0) : parseInt(statusValue);
             try {
-                await apiRequest('PATCH', `/tasks/${id}/status`, { status: parseInt(status) });
+                await apiRequest('PATCH', `/tasks/${id}/status`, { status });
                 await this.load();
                 showToast('Status updated');
-            } catch (e) { showToast('Failed to update', 'error'); }
+            } catch(e) { showToast('Failed to update status', 'error'); }
+        },
+
+        async updateStatusAndRefresh(id, status) {
+            try {
+                await apiRequest('PATCH', `/tasks/${id}/status`, { status });
+                this.selectedTask = await apiRequest('GET', `/tasks/${id}`);
+                await this.load();
+                showToast('Status updated');
+            } catch(e) { showToast('Failed to update status', 'error'); }
         },
 
         async deleteTask(id) {
-            if (!confirm('Delete this task?')) return;
+            if(!confirm('Delete this task?')) return;
             try {
                 await apiRequest('DELETE', `/tasks/${id}`);
+                this.showDetail = false;
                 await this.load();
                 showToast('Task deleted');
-            } catch (e) { showToast('Failed to delete', 'error'); }
+            } catch(e) { showToast('Failed to delete task', 'error'); }
+        },
+
+        statusBadge(status) {
+            const map = { Open: 'bg-gray-100 text-gray-700', InProgress: 'bg-blue-100 text-blue-700',
+                Completed: 'bg-green-100 text-green-700', Overdue: 'bg-red-100 text-red-700' };
+            return map[status] || 'bg-gray-100 text-gray-600';
+        },
+
+        statusSelectColor(status) {
+            const map = { Open: 'bg-gray-50', InProgress: 'bg-blue-50', Completed: 'bg-green-50', Overdue: 'bg-red-50' };
+            return map[status] || '';
+        },
+
+        formatDate(d) {
+            if (!d) return '—';
+            return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        },
+
+        formatDateTime(d) {
+            if (!d) return '';
+            return new Date(d).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         }
     };
 }

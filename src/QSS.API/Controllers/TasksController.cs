@@ -33,6 +33,7 @@ public class TasksController : ControllerBase
             .Include(t => t.Assignee)
             .Include(t => t.Room)
             .Include(t => t.Device)
+            .Include(t => t.DependsOnTask)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<QssTaskStatus>(status, true, out var statusEnum))
@@ -41,8 +42,8 @@ public class TasksController : ControllerBase
         if (!string.IsNullOrWhiteSpace(assigneeId))
             query = query.Where(t => t.AssigneeId == assigneeId);
 
-        var tasks = await query.OrderByDescending(t => t.CreatedAt).Select(t => MapToDto(t)).ToListAsync();
-        return Ok(tasks);
+        var tasks = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
+        return Ok(tasks.Select(t => MapToDto(t)));
     }
 
     [HttpGet("{id}")]
@@ -53,24 +54,24 @@ public class TasksController : ControllerBase
             .Include(t => t.Assignee)
             .Include(t => t.Room)
             .Include(t => t.Device)
+            .Include(t => t.DependsOnTask)
             .Include(t => t.Comments).ThenInclude(c => c.Author)
             .FirstOrDefaultAsync(t => t.Id == id);
         if (t == null) return NotFound();
 
-        return Ok(new
+        var dto = MapToDto(t);
+        dto.Comments = t.Comments.OrderBy(c => c.CreatedAt).Select(c => new TaskCommentDto
         {
-            task = MapToDto(t),
-            comments = t.Comments.Select(c => new TaskCommentDto
-            {
-                Id = c.Id,
-                Content = c.Content,
-                AuthorId = c.AuthorId,
-                AuthorName = c.Author?.FullName ?? "",
-                TaskId = c.TaskId,
-                MentionedUserId = c.MentionedUserId,
-                CreatedAt = c.CreatedAt
-            })
-        });
+            Id = c.Id,
+            Content = c.Content,
+            AuthorId = c.AuthorId,
+            AuthorName = c.Author?.FullName ?? "",
+            TaskId = c.TaskId,
+            MentionedUserId = c.MentionedUserId,
+            CreatedAt = c.CreatedAt
+        }).ToList();
+
+        return Ok(dto);
     }
 
     [HttpPost]
@@ -90,6 +91,8 @@ public class TasksController : ControllerBase
             RoomId = dto.RoomId,
             DeviceId = dto.DeviceId,
             DependsOnTaskId = dto.DependsOnTaskId,
+            AttachmentUrl = dto.AttachmentUrl,
+            AttachmentName = dto.AttachmentName,
             CreatedByUserId = userId
         };
         _db.Tasks.Add(task);
@@ -126,6 +129,8 @@ public class TasksController : ControllerBase
         task.RoomId = dto.RoomId;
         task.DeviceId = dto.DeviceId;
         task.DependsOnTaskId = dto.DependsOnTaskId;
+        task.AttachmentUrl = dto.AttachmentUrl;
+        task.AttachmentName = dto.AttachmentName;
         await _db.SaveChangesAsync();
         return NoContent();
     }
@@ -140,6 +145,15 @@ public class TasksController : ControllerBase
         if (dto.Status == QssTaskStatus.Completed)
             task.CompletedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+
+        // Trigger: when a task is completed, activate any tasks that depend on it
+        if (dto.Status == QssTaskStatus.Completed)
+            await ActivateDependentTasks(id);
+
+        // Trigger: log device history when a device-linked task is completed
+        if (dto.Status == QssTaskStatus.Completed && task.DeviceId.HasValue)
+            await LogDeviceTaskCompletion(task);
+
         return NoContent();
     }
 
@@ -173,7 +187,7 @@ public class TasksController : ControllerBase
             {
                 UserId = dto.MentionedUserId,
                 Title = "You were mentioned",
-                Message = $"You were mentioned in a task comment",
+                Message = "You were mentioned in a task comment",
                 Type = NotificationType.NewComment,
                 ResourceUrl = $"/tasks/{id}"
             };
@@ -196,6 +210,38 @@ public class TasksController : ControllerBase
         return NoContent();
     }
 
+    private async Task ActivateDependentTasks(int completedTaskId)
+    {
+        var dependentTasks = await _db.Tasks
+            .Where(t => t.DependsOnTaskId == completedTaskId && t.Status == QssTaskStatus.Open)
+            .ToListAsync();
+
+        foreach (var dep in dependentTasks)
+        {
+            // Mark as InProgress to signal it is now unblocked and ready
+            dep.Status = QssTaskStatus.InProgress;
+        }
+
+        if (dependentTasks.Any())
+            await _db.SaveChangesAsync();
+    }
+
+    private async Task LogDeviceTaskCompletion(QssTask task)
+    {
+        var historyEntry = new DeviceHistory
+        {
+            DeviceId = task.DeviceId!.Value,
+            EventType = "TaskCompleted",
+            Title = $"Task completed: {task.Name}",
+            Notes = task.Description,
+            EventDate = task.CompletedAt ?? DateTime.UtcNow,
+            PerformedByUserId = null,
+            LinkedTaskId = task.Id
+        };
+        _db.DeviceHistories.Add(historyEntry);
+        await _db.SaveChangesAsync();
+    }
+
     private static TaskDto MapToDto(QssTask t) => new()
     {
         Id = t.Id,
@@ -216,6 +262,8 @@ public class TasksController : ControllerBase
         DeviceId = t.DeviceId,
         DeviceName = t.Device?.Name,
         DependsOnTaskId = t.DependsOnTaskId,
+        DependsOnTaskName = t.DependsOnTask?.Name,
+        IsBlocked = t.DependsOnTaskId.HasValue && t.DependsOnTask != null && t.DependsOnTask.Status != QssTaskStatus.Completed,
         CreatedAt = t.CreatedAt
     };
 }

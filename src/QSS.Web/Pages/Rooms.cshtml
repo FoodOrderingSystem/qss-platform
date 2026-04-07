@@ -4,8 +4,10 @@
 
 <div x-data="roomsApp()" x-init="load()">
     <div class="flex items-center justify-between mb-6">
-        <div><h1 class="text-2xl font-bold text-gray-900">Rooms</h1>
-        <p class="text-sm text-gray-500">Manage practice rooms and their resources</p></div>
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Rooms</h1>
+            <p class="text-sm text-gray-500">Manage practice rooms, devices, and linked tasks</p>
+        </div>
         <button @@click="openCreate()" class="btn-primary"><i class="fas fa-plus"></i> Add Room</button>
     </div>
 
@@ -15,16 +17,10 @@
             <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 animate-pulse">
                 <div class="flex items-center gap-3 mb-3">
                     <div class="w-10 h-10 bg-gray-100 rounded-lg"></div>
-                    <div class="flex-1">
-                        <div class="h-4 bg-gray-100 rounded mb-1 w-2/3"></div>
-                        <div class="h-3 bg-gray-100 rounded w-1/2"></div>
-                    </div>
+                    <div class="flex-1"><div class="h-4 bg-gray-100 rounded mb-1 w-2/3"></div><div class="h-3 bg-gray-100 rounded w-1/2"></div></div>
                 </div>
                 <div class="h-3 bg-gray-100 rounded mb-4"></div>
-                <div class="flex justify-between">
-                    <div class="h-3 bg-gray-100 rounded w-20"></div>
-                    <div class="h-3 bg-gray-100 rounded w-20"></div>
-                </div>
+                <div class="flex justify-between"><div class="h-3 bg-gray-100 rounded w-20"></div><div class="h-3 bg-gray-100 rounded w-20"></div></div>
             </div>
         </template>
     </div>
@@ -36,117 +32,234 @@
         </div>
         <p class="text-gray-500 font-medium mb-1">No rooms yet</p>
         <p class="text-xs text-gray-300 mb-4">Add your first practice room to start tracking devices and tasks</p>
-        <button @@click="openCreate()" class="btn-primary text-sm">
-            <i class="fas fa-plus"></i> Add Room
-        </button>
+        <button @@click="openCreate()" class="btn-primary text-sm"><i class="fas fa-plus"></i> Add Room</button>
     </div>
 
     <!-- Room cards -->
     <div x-show="!loading && rooms.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <template x-for="r in rooms" :key="r.id">
             <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-all cursor-pointer group"
-                 @@click="openDetail(r)">
+                 @@click="openDetail(r.id)">
                 <div class="flex items-center gap-3 mb-3">
                     <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
                         <i class="fas fa-door-open text-blue-600 text-sm"></i>
                     </div>
-                    <div>
-                        <h3 class="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors" x-text="r.name"></h3>
-                        <p class="text-xs text-gray-400" x-text="r.location || 'No location'"></p>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors truncate" x-text="r.name"></h3>
+                        <p class="text-xs text-gray-400 truncate" x-text="r.location || 'No location'"></p>
                     </div>
                 </div>
-                <p class="text-xs text-gray-500 mb-4 line-clamp-2" x-text="r.description || 'No description'"></p>
-                <div class="flex items-center justify-between text-xs text-gray-500">
-                    <span><i class="fas fa-laptop-medical mr-1"></i><span x-text="r.deviceCount"></span> devices</span>
-                    <span :class="r.openTaskCount > 0 ? 'text-orange-600 font-medium' : ''">
-                        <i class="fas fa-tasks mr-1"></i><span x-text="r.openTaskCount"></span> open tasks
-                    </span>
-                    <div class="flex items-center gap-2">
-                        <span class="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">View →</span>
-                        <button @@click.stop="deleteRoom(r.id)" class="text-red-400 hover:text-red-600" title="Delete room">
-                            <i class="fas fa-trash"></i>
+                <p class="text-xs text-gray-500 mb-4 line-clamp-2 min-h-[2rem]" x-text="r.description || 'No description'"></p>
+                <div class="flex items-center justify-between text-xs">
+                    <div class="flex items-center gap-3 text-gray-500">
+                        <span><i class="fas fa-laptop-medical mr-1"></i><span x-text="r.deviceCount"></span> devices</span>
+                        <span :class="r.overdueTaskCount > 0 ? 'text-red-600 font-semibold' : (r.openTaskCount > 0 ? 'text-orange-600 font-medium' : 'text-gray-400')">
+                            <i class="fas fa-tasks mr-1"></i><span x-text="r.openTaskCount"></span> open
+                            <span x-show="r.overdueTaskCount > 0" class="text-red-600 ml-1">(<span x-text="r.overdueTaskCount"></span> overdue)</span>
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button @@click.stop="openEdit(r)" class="text-gray-400 hover:text-blue-600 p-1.5 rounded hover:bg-blue-50 opacity-0 group-hover:opacity-100 transition-all" title="Edit">
+                            <i class="fas fa-pencil text-xs"></i>
                         </button>
+                        <button @@click.stop="deleteRoom(r.id)" class="text-red-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all" title="Delete">
+                            <i class="fas fa-trash text-xs"></i>
+                        </button>
+                        <span class="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1">View →</span>
                     </div>
                 </div>
             </div>
         </template>
     </div>
 
-    <!-- Room Detail Modal -->
-    <div x-show="showDetail && selectedRoom" class="modal-backdrop" x-transition>
-        <div class="modal p-6" style="max-width:540px">
-            <div class="flex items-start justify-between mb-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                        <i class="fas fa-door-open text-blue-600"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-lg font-bold text-gray-900" x-text="selectedRoom?.name"></h2>
-                        <p class="text-xs text-gray-400" x-text="selectedRoom?.location || 'No location specified'"></p>
-                    </div>
-                </div>
-                <button @@click="showDetail = false" class="text-gray-400 hover:text-gray-600 p-1">
-                    <i class="fas fa-times"></i>
-                </button>
+    <!-- Room Detail Slide-over -->
+    <div x-show="showDetail" class="fixed inset-0 z-50 overflow-hidden">
+        <div class="absolute inset-0 bg-gray-900/40" @@click="showDetail = false"></div>
+        <div class="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl flex flex-col"
+             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
+             x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full">
+
+            <div x-show="detailLoading" class="flex-1 flex items-center justify-center">
+                <div class="text-center text-gray-400"><i class="fas fa-spinner fa-spin text-2xl mb-2"></i><p class="text-sm">Loading...</p></div>
             </div>
 
-            <p class="text-sm text-gray-600 mb-5" x-text="selectedRoom?.description || 'No description provided.'"></p>
-
-            <div class="grid grid-cols-2 gap-4 mb-5">
-                <div class="bg-blue-50 rounded-xl p-4 text-center">
-                    <p class="text-2xl font-bold text-blue-600" x-text="selectedRoom?.deviceCount ?? 0"></p>
-                    <p class="text-xs text-blue-500 mt-1">Devices</p>
-                </div>
-                <div class="rounded-xl p-4 text-center" :class="(selectedRoom?.openTaskCount ?? 0) > 0 ? 'bg-orange-50' : 'bg-gray-50'">
-                    <p class="text-2xl font-bold" :class="(selectedRoom?.openTaskCount ?? 0) > 0 ? 'text-orange-600' : 'text-gray-500'" x-text="selectedRoom?.openTaskCount ?? 0"></p>
-                    <p class="text-xs mt-1" :class="(selectedRoom?.openTaskCount ?? 0) > 0 ? 'text-orange-400' : 'text-gray-400'">Open Tasks</p>
-                </div>
-            </div>
-
-            <!-- Devices in this room -->
-            <div x-show="roomDevices.length > 0" class="mb-5">
-                <h3 class="text-sm font-semibold text-gray-700 mb-3">Devices in this room</h3>
-                <div class="space-y-2 max-h-40 overflow-y-auto">
-                    <template x-for="d in roomDevices" :key="d.id">
-                        <div class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
-                            <div>
-                                <span class="font-medium text-gray-800" x-text="d.name"></span>
-                                <span class="text-xs text-gray-400 ml-2" x-text="d.manufacturer ? '(' + d.manufacturer + ')' : ''"></span>
+            <template x-if="!detailLoading && selectedRoom">
+                <div class="flex flex-col h-full">
+                    <div class="flex items-start justify-between p-6 border-b border-gray-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-door-open text-blue-600"></i>
                             </div>
-                            <span x-show="d.maintenanceOverdue" class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">OVERDUE</span>
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-900" x-text="selectedRoom.name"></h2>
+                                <p class="text-xs text-gray-400 flex items-center gap-1" x-show="selectedRoom.location">
+                                    <i class="fas fa-map-marker-alt"></i> <span x-text="selectedRoom.location"></span>
+                                </p>
+                            </div>
                         </div>
-                    </template>
-                </div>
-            </div>
+                        <button @@click="showDetail = false" class="text-gray-400 hover:text-gray-600 p-1 mt-1">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
 
-            <div class="flex justify-end gap-3">
-                <button @@click="showDetail = false; deleteRoom(selectedRoom.id)" class="text-xs text-red-500 hover:text-red-700 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors">
-                    <i class="fas fa-trash mr-1"></i> Delete Room
-                </button>
-                <button @@click="showDetail = false" class="btn-secondary">Close</button>
-            </div>
+                    <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                        <div x-show="selectedRoom.description">
+                            <p class="text-sm text-gray-600 leading-relaxed" x-text="selectedRoom.description"></p>
+                        </div>
+
+                        <!-- Stats row -->
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="bg-blue-50 rounded-xl p-3 text-center">
+                                <p class="text-xl font-bold text-blue-600" x-text="selectedRoom.deviceCount ?? 0"></p>
+                                <p class="text-xs text-blue-500 mt-0.5">Devices</p>
+                            </div>
+                            <div class="rounded-xl p-3 text-center" :class="(selectedRoom.openTaskCount ?? 0) > 0 ? 'bg-orange-50' : 'bg-gray-50'">
+                                <p class="text-xl font-bold" :class="(selectedRoom.openTaskCount ?? 0) > 0 ? 'text-orange-600' : 'text-gray-500'" x-text="selectedRoom.openTaskCount ?? 0"></p>
+                                <p class="text-xs mt-0.5" :class="(selectedRoom.openTaskCount ?? 0) > 0 ? 'text-orange-400' : 'text-gray-400'">Open Tasks</p>
+                            </div>
+                            <div class="rounded-xl p-3 text-center" :class="(selectedRoom.overdueTaskCount ?? 0) > 0 ? 'bg-red-50' : 'bg-gray-50'">
+                                <p class="text-xl font-bold" :class="(selectedRoom.overdueTaskCount ?? 0) > 0 ? 'text-red-600' : 'text-gray-500'" x-text="selectedRoom.overdueTaskCount ?? 0"></p>
+                                <p class="text-xs mt-0.5" :class="(selectedRoom.overdueTaskCount ?? 0) > 0 ? 'text-red-400' : 'text-gray-400'">Overdue</p>
+                            </div>
+                        </div>
+
+                        <!-- Tabs -->
+                        <div>
+                            <div class="flex border-b border-gray-100 mb-4">
+                                <button @@click="activeTab = 'tasks'" class="px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px"
+                                    :class="activeTab === 'tasks' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+                                    Tasks <span class="ml-1 text-xs bg-gray-100 px-1.5 py-0.5 rounded-full" x-text="selectedRoom.tasks?.length ?? 0"></span>
+                                </button>
+                                <button @@click="activeTab = 'devices'" class="px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px"
+                                    :class="activeTab === 'devices' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'">
+                                    Devices <span class="ml-1 text-xs bg-gray-100 px-1.5 py-0.5 rounded-full" x-text="selectedRoom.devices?.length ?? 0"></span>
+                                </button>
+                            </div>
+
+                            <!-- Tasks tab -->
+                            <div x-show="activeTab === 'tasks'" class="space-y-2 max-h-72 overflow-y-auto">
+                                <div x-show="!selectedRoom.tasks || selectedRoom.tasks.length === 0" class="text-center py-8 text-gray-400">
+                                    <i class="fas fa-clipboard-list text-2xl mb-2"></i>
+                                    <p class="text-xs">No tasks assigned to this room</p>
+                                </div>
+                                <template x-for="t in selectedRoom.tasks" :key="t.id">
+                                    <div class="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
+                                         :class="t.isOverdue ? 'bg-red-50' : 'bg-gray-50 hover:bg-gray-100'">
+                                        <div class="w-2 h-2 rounded-full flex-shrink-0" :class="taskStatusDot(t.status)"></div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-sm font-medium text-gray-800 truncate" x-text="t.name"></p>
+                                            <p class="text-xs text-gray-400" x-text="t.assigneeName ? 'Assigned to ' + t.assigneeName : 'Unassigned'"></p>
+                                        </div>
+                                        <div class="flex-shrink-0 flex items-center gap-2">
+                                            <span x-show="t.dueDate" class="text-xs text-gray-400" x-text="formatDate(t.dueDate)"></span>
+                                            <span x-show="t.isOverdue" class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">OVERDUE</span>
+                                            <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="taskStatusBadge(t.status)" x-text="t.status"></span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <!-- Devices tab -->
+                            <div x-show="activeTab === 'devices'" class="space-y-2 max-h-72 overflow-y-auto">
+                                <div x-show="!selectedRoom.devices || selectedRoom.devices.length === 0" class="text-center py-8 text-gray-400">
+                                    <i class="fas fa-laptop-medical text-2xl mb-2"></i>
+                                    <p class="text-xs">No devices assigned to this room</p>
+                                </div>
+                                <template x-for="d in selectedRoom.devices" :key="d.id">
+                                    <div class="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 hover:bg-gray-100 transition-colors">
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-800" x-text="d.name"></p>
+                                            <p class="text-xs text-gray-400" x-text="[d.manufacturer, d.model].filter(Boolean).join(' · ') || 'No model info'"></p>
+                                        </div>
+                                        <div class="text-right">
+                                            <p class="text-xs text-gray-400" x-text="d.serialNumber ? 'S/N: ' + d.serialNumber : ''"></p>
+                                            <span x-show="d.maintenanceOverdue" class="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">Maintenance Overdue</span>
+                                            <span x-show="!d.maintenanceOverdue && d.nextMaintenanceDue" class="text-xs text-gray-400" x-text="'Due: ' + formatDate(d.nextMaintenanceDue)"></span>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-4 border-t border-gray-100 flex justify-between bg-gray-50">
+                        <button @@click="showDetail = false; deleteRoom(selectedRoom.id)"
+                                class="text-sm text-red-500 hover:text-red-700 flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors">
+                            <i class="fas fa-trash text-xs"></i> Delete Room
+                        </button>
+                        <div class="flex gap-2">
+                            <button @@click="showDetail = false" class="btn-secondary text-sm">Close</button>
+                            <button @@click="showDetail = false; openEdit(selectedRoom)" class="btn-primary text-sm">
+                                <i class="fas fa-pencil mr-1"></i> Edit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </div>
     </div>
 
     <!-- Create Room Modal -->
     <div x-show="showCreate" class="modal-backdrop" x-transition>
-        <div class="modal p-6">
+        <div class="modal p-6" style="max-width:460px">
             <div class="flex items-center justify-between mb-5">
-                <h2 class="text-lg font-bold text-gray-900">Add Room</h2>
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900">Add Room</h2>
+                    <p class="text-xs text-gray-400 mt-0.5">Define a new practice room</p>
+                </div>
                 <button @@click="showCreate = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
             </div>
             <form x-on:submit.prevent="createRoom()">
                 <div class="space-y-4">
-                    <div><label class="form-label">Room Name *</label>
-                    <input x-model="form.name" type="text" class="form-input" required placeholder="e.g. Treatment Room 1" /></div>
-                    <div><label class="form-label">Location</label>
-                    <input x-model="form.location" type="text" class="form-input" placeholder="e.g. Ground Floor, East Wing" /></div>
-                    <div><label class="form-label">Description</label>
-                    <textarea x-model="form.description" class="form-input" rows="2" placeholder="Purpose and notes about this room"></textarea></div>
+                    <div>
+                        <label class="form-label">Room Name <span class="text-red-500">*</span></label>
+                        <input x-model="form.name" type="text" class="form-input" required placeholder="e.g. Treatment Room 1" />
+                    </div>
+                    <div>
+                        <label class="form-label">Location / Area</label>
+                        <input x-model="form.location" type="text" class="form-input" placeholder="e.g. Ground Floor, East Wing" />
+                    </div>
+                    <div>
+                        <label class="form-label">Description</label>
+                        <textarea x-model="form.description" class="form-input" rows="2" placeholder="Purpose and notes about this room"></textarea>
+                    </div>
                 </div>
                 <div class="flex justify-end gap-3 mt-6">
                     <button type="button" @@click="showCreate = false" class="btn-secondary">Cancel</button>
                     <button type="submit" class="btn-primary" :disabled="saving" x-text="saving ? 'Adding...' : 'Add Room'"></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Room Modal -->
+    <div x-show="showEdit" class="modal-backdrop" x-transition>
+        <div class="modal p-6" style="max-width:460px">
+            <div class="flex items-center justify-between mb-5">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900">Edit Room</h2>
+                    <p class="text-xs text-gray-400 mt-0.5">Update room details</p>
+                </div>
+                <button @@click="showEdit = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <form x-on:submit.prevent="updateRoom()">
+                <div class="space-y-4">
+                    <div>
+                        <label class="form-label">Room Name <span class="text-red-500">*</span></label>
+                        <input x-model="editForm.name" type="text" class="form-input" required />
+                    </div>
+                    <div>
+                        <label class="form-label">Location / Area</label>
+                        <input x-model="editForm.location" type="text" class="form-input" />
+                    </div>
+                    <div>
+                        <label class="form-label">Description</label>
+                        <textarea x-model="editForm.description" class="form-input" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @@click="showEdit = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary" :disabled="saving" x-text="saving ? 'Saving...' : 'Save Changes'"></button>
                 </div>
             </form>
         </div>
@@ -157,19 +270,17 @@
 <script>
 function roomsApp() {
     return {
-        rooms: [], allDevices: [], roomDevices: [],
+        rooms: [],
         loading: true, saving: false,
-        showCreate: false, showDetail: false, selectedRoom: null,
+        showCreate: false, showEdit: false, showDetail: false,
+        selectedRoom: null, detailLoading: false, activeTab: 'tasks',
         form: { name: '', location: '', description: '' },
+        editForm: { id: null, name: '', location: '', description: '' },
 
         async load() {
             this.loading = true;
-            try {
-                [this.rooms, this.allDevices] = await Promise.all([
-                    apiRequest('GET', '/rooms'),
-                    apiRequest('GET', '/devices').catch(() => [])
-                ]);
-            } catch(e) { showToast('Failed to load rooms', 'error'); }
+            try { this.rooms = await apiRequest('GET', '/rooms'); }
+            catch(e) { showToast('Failed to load rooms', 'error'); }
             finally { this.loading = false; }
         },
 
@@ -178,10 +289,24 @@ function roomsApp() {
             this.showCreate = true;
         },
 
-        openDetail(room) {
-            this.selectedRoom = room;
-            this.roomDevices = this.allDevices.filter(d => d.roomId === room.id || d.roomName === room.name);
+        openEdit(room) {
+            this.editForm = { id: room.id, name: room.name, location: room.location || '', description: room.description || '' };
+            this.showEdit = true;
+        },
+
+        async openDetail(id) {
             this.showDetail = true;
+            this.detailLoading = true;
+            this.selectedRoom = null;
+            this.activeTab = 'tasks';
+            try {
+                this.selectedRoom = await apiRequest('GET', `/rooms/${id}`);
+            } catch(e) {
+                showToast('Failed to load room details', 'error');
+                this.showDetail = false;
+            } finally {
+                this.detailLoading = false;
+            }
         },
 
         async createRoom() {
@@ -195,13 +320,45 @@ function roomsApp() {
             finally { this.saving = false; }
         },
 
+        async updateRoom() {
+            this.saving = true;
+            try {
+                await apiRequest('PUT', `/rooms/${this.editForm.id}`, {
+                    name: this.editForm.name,
+                    location: this.editForm.location,
+                    description: this.editForm.description
+                });
+                this.showEdit = false;
+                await this.load();
+                showToast('Room updated successfully');
+            } catch(e) { showToast('Failed to update room', 'error'); }
+            finally { this.saving = false; }
+        },
+
         async deleteRoom(id) {
             if(!confirm('Delete this room? Devices and tasks linked to it will lose their room reference.')) return;
             try {
                 await apiRequest('DELETE', `/rooms/${id}`);
+                this.showDetail = false;
                 await this.load();
                 showToast('Room deleted');
             } catch(e) { showToast('Failed to delete room', 'error'); }
+        },
+
+        taskStatusBadge(status) {
+            const map = { Open: 'bg-gray-100 text-gray-600', InProgress: 'bg-blue-100 text-blue-700',
+                Completed: 'bg-green-100 text-green-700', Overdue: 'bg-red-100 text-red-700' };
+            return map[status] || 'bg-gray-100 text-gray-600';
+        },
+
+        taskStatusDot(status) {
+            const map = { Open: 'bg-gray-400', InProgress: 'bg-blue-500', Completed: 'bg-green-500', Overdue: 'bg-red-500' };
+            return map[status] || 'bg-gray-400';
+        },
+
+        formatDate(d) {
+            if (!d) return '—';
+            return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
         }
     };
 }
