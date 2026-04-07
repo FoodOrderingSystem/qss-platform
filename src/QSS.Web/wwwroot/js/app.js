@@ -1,6 +1,8 @@
 // QSS Platform - Core JS
 
-const API_BASE = window.location.origin.replace('5001', '5000');
+// API_BASE is injected by _Layout.cshtml from server configuration (ApiBaseUrl).
+// Falls back to port-swap for local development if not set.
+const API_BASE = window.API_BASE || window.location.origin.replace('5001', '5000');
 
 // Utility: get JWT from cookie/session
 function getToken() {
