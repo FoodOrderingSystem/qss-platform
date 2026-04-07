@@ -69,6 +69,7 @@ public class LoginModel : PageModel
             Response.Cookies.Append("qss_token", token, new CookieOptions
             {
                 HttpOnly = false, // Readable by JS for API calls
+                Secure = true,
                 Expires = DateTimeOffset.UtcNow.AddDays(7),
                 SameSite = SameSiteMode.Strict
             });

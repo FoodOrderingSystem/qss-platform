@@ -9,7 +9,25 @@
         <button @@click="showCreate = true" class="btn-primary"><i class="fas fa-plus"></i> Add Medication</button>
     </div>
 
-    <div class="table-wrapper">
+    <!-- Loading state -->
+    <div x-show="loading" class="table-wrapper">
+        <template x-for="i in [1,2,3]" :key="i">
+            <div class="flex gap-4 px-4 py-4 border-b border-gray-50 animate-pulse">
+                <div class="flex-1"><div class="h-4 bg-gray-100 rounded mb-1 w-1/2"></div><div class="h-3 bg-gray-100 rounded w-1/4"></div></div>
+                <div class="w-24 h-4 bg-gray-100 rounded self-center"></div>
+                <div class="w-20 h-4 bg-gray-100 rounded self-center"></div>
+                <div class="w-24 h-4 bg-gray-100 rounded self-center"></div>
+            </div>
+        </template>
+    </div>
+
+    <div x-show="!loading && medications.length === 0" class="flex flex-col items-center justify-center py-16 text-center">
+        <i class="fas fa-pills text-3xl text-gray-200 mb-3"></i>
+        <p class="text-gray-400 font-medium">No medications tracked</p>
+        <p class="text-xs text-gray-300 mt-1">Click "Add Medication" to start tracking</p>
+    </div>
+
+    <div x-show="!loading && medications.length > 0" class="table-wrapper">
         <table class="w-full text-sm">
             <thead class="bg-gray-50 border-b border-gray-100">
                 <tr>
@@ -52,7 +70,7 @@
                 </template>
             </tbody>
         </table>
-    </div>
+    </div><!-- end !loading && medications.length > 0 -->
 
     <!-- Create Modal -->
     <div x-show="showCreate" class="modal-backdrop" x-transition>
@@ -116,27 +134,33 @@
 <script>
 function medsApp() {
     return {
-        medications: [], showCreate: false, showUsage: false, selectedMed: null,
+        medications: [], showCreate: false, showUsage: false, selectedMed: null, loading: true,
         form: { name: '', activeIngredient: '', dosage: '', quantity: 0, minimumQuantity: 2, expirationDate: '', batchNumber: '', storageInstructions: '' },
         usageForm: { quantityUsed: 1, notes: '' },
-        async load() { this.medications = await apiRequest('GET', '/medications'); },
+        async load() {
+            this.loading = true;
+            try { this.medications = await apiRequest('GET', '/medications'); }
+            catch(e) { showToast('Failed to load medications', 'error'); }
+            finally { this.loading = false; }
+        },
         async createMed() {
             try {
                 await apiRequest('POST', '/medications', { ...this.form, expirationDate: this.form.expirationDate || null });
-                this.showCreate = false; await this.load(); showToast('Medication added');
-            } catch(e) { showToast('Failed', 'error'); }
+                this.showCreate = false; await this.load(); showToast('Medication added successfully');
+            } catch(e) { showToast('Failed to add medication', 'error'); }
         },
         openUsage(med) { this.selectedMed = med; this.usageForm = { quantityUsed: 1, notes: '' }; this.showUsage = true; },
         async logUsage() {
+            if (!confirm(`Log usage of ${this.usageForm.quantityUsed} unit(s) of ${this.selectedMed?.name}? This will permanently reduce the stock.`)) return;
             try {
                 await apiRequest('POST', `/medications/${this.selectedMed.id}/log-usage`, this.usageForm);
-                this.showUsage = false; await this.load(); showToast('Usage logged');
-            } catch(e) { showToast(e.message || 'Failed', 'error'); }
+                this.showUsage = false; await this.load(); showToast('Usage logged successfully');
+            } catch(e) { showToast(e.message || 'Failed to log usage', 'error'); }
         },
         async deleteMed(id) {
-            if(!confirm('Delete medication?')) return;
-            try { await apiRequest('DELETE', `/medications/${id}`); await this.load(); showToast('Deleted'); }
-            catch(e) { showToast('Failed', 'error'); }
+            if(!confirm('Delete this medication? This cannot be undone.')) return;
+            try { await apiRequest('DELETE', `/medications/${id}`); await this.load(); showToast('Medication deleted'); }
+            catch(e) { showToast('Failed to delete medication', 'error'); }
         }
     };
 }

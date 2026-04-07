@@ -15,6 +15,25 @@
         </button>
     </div>
 
+    <!-- Loading skeleton -->
+    <div x-show="loading" class="space-y-3">
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5 h-14 animate-pulse bg-gray-50"></div>
+        <div class="table-wrapper">
+            <template x-for="i in [1,2,3,4,5]" :key="i">
+                <div class="flex gap-4 px-4 py-3 border-b border-gray-50">
+                    <div class="h-4 bg-gray-100 rounded animate-pulse flex-1"></div>
+                    <div class="h-4 bg-gray-100 rounded animate-pulse w-24"></div>
+                    <div class="h-4 bg-gray-100 rounded animate-pulse w-24"></div>
+                    <div class="h-4 bg-gray-100 rounded animate-pulse w-20"></div>
+                    <div class="h-4 bg-gray-100 rounded animate-pulse w-16"></div>
+                    <div class="h-4 bg-gray-100 rounded animate-pulse w-20"></div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <div x-show="!loading">
+
     <!-- Filters -->
     <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5 flex flex-wrap gap-3">
         <select x-model="filter.status" @@change="load()" class="form-input w-auto">
@@ -43,7 +62,8 @@
             </thead>
             <tbody class="divide-y divide-gray-50">
                 <template x-for="task in filteredTasks" :key="task.id">
-                    <tr class="hover:bg-gray-50 transition-colors">
+                    <tr class="hover:bg-gray-50 transition-colors"
+                        :class="task.status === 'Overdue' ? 'bg-red-50 hover:bg-red-100' : (task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'Completed' ? 'bg-amber-50 hover:bg-amber-100' : '')">
                         <td class="px-4 py-3">
                             <button @@click="openDetail(task)" class="font-medium text-gray-900 hover:text-blue-600 text-left">
                                 <span x-text="task.name"></span>
@@ -76,12 +96,19 @@
                         </td>
                     </tr>
                 </template>
-                <tr x-show="filteredTasks.length === 0">
-                    <td colspan="7" class="px-4 py-10 text-center text-gray-400">No tasks found</td>
+                <tr x-show="filteredTasks.length === 0 && !loading">
+                    <td colspan="7" class="px-4 py-16 text-center">
+                        <div class="flex flex-col items-center gap-2">
+                            <i class="fas fa-clipboard-list text-3xl text-gray-200"></i>
+                            <p class="text-gray-400 font-medium">No tasks found</p>
+                            <p class="text-xs text-gray-300" x-text="filter.status || filter.search ? 'Try adjusting your filters' : 'Click &quot;New Task&quot; to create the first task'"></p>
+                        </div>
+                    </td>
                 </tr>
             </tbody>
         </table>
     </div>
+    </div><!-- end x-show="!loading" -->
 
     <!-- Create Task Modal -->
     <div x-show="showCreate" class="modal-backdrop" x-transition>
@@ -219,6 +246,7 @@ function tasksApp() {
     return {
         tasks: [], processes: [], users: [], rooms: [], devices: [], comments: [],
         filter: { status: '', search: '' },
+        loading: true,
         showCreate: false, showDetail: false, selectedTask: null, newComment: '',
         form: { name: '', description: '', processId: '', assigneeId: '', dueDate: '', frequency: '0', roomId: '', deviceId: '' },
 
@@ -231,8 +259,12 @@ function tasksApp() {
         },
 
         async load() {
-            const params = this.filter.status ? `?status=${this.filter.status}` : '';
-            this.tasks = await apiRequest('GET', `/tasks${params}`);
+            this.loading = true;
+            try {
+                const params = this.filter.status ? `?status=${this.filter.status}` : '';
+                this.tasks = await apiRequest('GET', `/tasks${params}`);
+            } catch(e) { showToast('Failed to load tasks', 'error'); }
+            finally { this.loading = false; }
         },
 
         async openCreate() {

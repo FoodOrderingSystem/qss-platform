@@ -6,24 +6,54 @@
     <div class="flex items-center justify-between mb-6">
         <div><h1 class="text-2xl font-bold text-gray-900">Processes</h1>
         <p class="text-sm text-gray-500 mt-0.5">Manage quality processes and categories</p></div>
-        <button @@click="showCreate = true" class="btn-primary"><i class="fas fa-plus"></i> New Process</button>
+        <button @@click="openCreate()" class="btn-primary"><i class="fas fa-plus"></i> New Process</button>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+    <!-- Loading skeleton -->
+    <div x-show="loading" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <template x-for="i in [1,2,3,4,5,6]" :key="i">
+            <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 animate-pulse">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="w-10 h-10 bg-gray-100 rounded-lg"></div>
+                    <div class="h-5 w-20 bg-gray-100 rounded-full"></div>
+                </div>
+                <div class="h-4 bg-gray-100 rounded mb-2 w-3/4"></div>
+                <div class="h-3 bg-gray-100 rounded w-full mb-3"></div>
+                <div class="h-3 bg-gray-100 rounded w-1/3"></div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Empty state -->
+    <div x-show="!loading && processes.length === 0" class="flex flex-col items-center justify-center py-24 text-center">
+        <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
+            <i class="fas fa-project-diagram text-2xl text-blue-300"></i>
+        </div>
+        <p class="text-gray-500 font-medium mb-1">No processes yet</p>
+        <p class="text-xs text-gray-300 mb-4">Create your first quality process to get started</p>
+        <button @@click="openCreate()" class="btn-primary text-sm">
+            <i class="fas fa-plus"></i> New Process
+        </button>
+    </div>
+
+    <!-- Process cards -->
+    <div x-show="!loading && processes.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         <template x-for="p in processes" :key="p.id">
-            <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
+            <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-all cursor-pointer group"
+                 @@click="openDetail(p)">
                 <div class="flex items-start justify-between mb-3">
                     <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="categoryColor(p.category)">
                         <i class="fas fa-project-diagram text-white text-sm"></i>
                     </div>
                     <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full" x-text="p.category"></span>
                 </div>
-                <h3 class="font-semibold text-gray-900 mb-1" x-text="p.name"></h3>
-                <p class="text-xs text-gray-500 mb-3" x-text="p.description || 'No description'"></p>
+                <h3 class="font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors" x-text="p.name"></h3>
+                <p class="text-xs text-gray-500 mb-3 line-clamp-2" x-text="p.description || 'No description'"></p>
                 <div class="flex items-center justify-between">
-                    <span class="text-xs text-gray-400" x-text="p.taskCount + ' tasks'"></span>
-                    <div class="flex gap-1">
-                        <button @@click="deleteProcess(p.id)" class="text-red-400 hover:text-red-600 text-xs p-1">
+                    <span class="text-xs text-gray-400"><i class="fas fa-tasks mr-1"></i><span x-text="p.taskCount"></span> tasks</span>
+                    <div class="flex gap-2">
+                        <span class="text-xs text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">View details →</span>
+                        <button @@click.stop="deleteProcess(p.id)" class="text-red-400 hover:text-red-600 text-xs p-1" title="Delete process">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -32,16 +62,59 @@
         </template>
     </div>
 
+    <!-- Process Detail Modal -->
+    <div x-show="showDetail && selectedProcess" class="modal-backdrop" x-transition>
+        <div class="modal p-6" style="max-width:520px">
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="categoryColor(selectedProcess?.category)">
+                        <i class="fas fa-project-diagram text-white text-sm"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-900" x-text="selectedProcess?.name"></h2>
+                        <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full" x-text="selectedProcess?.category"></span>
+                    </div>
+                </div>
+                <button @@click="showDetail = false" class="text-gray-400 hover:text-gray-600 p-1">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <p class="text-sm text-gray-600 mb-5" x-text="selectedProcess?.description || 'No description provided.'"></p>
+
+            <div class="grid grid-cols-2 gap-4 mb-5">
+                <div class="bg-blue-50 rounded-xl p-4 text-center">
+                    <p class="text-2xl font-bold text-blue-600" x-text="selectedProcess?.taskCount ?? 0"></p>
+                    <p class="text-xs text-blue-500 mt-1">Linked Tasks</p>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-4 text-center">
+                    <p class="text-sm font-semibold text-gray-700" x-text="selectedProcess?.category"></p>
+                    <p class="text-xs text-gray-400 mt-1">Category</p>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button @@click="showDetail = false" class="btn-secondary">Close</button>
+                <button @@click="showDetail = false; deleteProcess(selectedProcess.id)" class="text-xs text-red-500 hover:text-red-700 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors">
+                    <i class="fas fa-trash mr-1"></i> Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Create Modal -->
     <div x-show="showCreate" class="modal-backdrop" x-transition>
         <div class="modal p-6">
-            <h2 class="text-lg font-bold text-gray-900 mb-5">Create Process</h2>
+            <div class="flex items-center justify-between mb-5">
+                <h2 class="text-lg font-bold text-gray-900">Create Process</h2>
+                <button @@click="showCreate = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
             <form x-on:submit.prevent="createProcess()">
                 <div class="space-y-4">
                     <div><label class="form-label">Name *</label>
-                    <input x-model="form.name" type="text" class="form-input" required /></div>
+                    <input x-model="form.name" type="text" class="form-input" required placeholder="e.g. Daily Sterilization Check" /></div>
                     <div><label class="form-label">Description</label>
-                    <textarea x-model="form.description" class="form-input" rows="2"></textarea></div>
+                    <textarea x-model="form.description" class="form-input" rows="2" placeholder="What does this process cover?"></textarea></div>
                     <div><label class="form-label">Category</label>
                     <select x-model="form.category" class="form-input">
                         <option value="0">Hygiene</option>
@@ -55,7 +128,7 @@
                 </div>
                 <div class="flex justify-end gap-3 mt-6">
                     <button type="button" @@click="showCreate = false" class="btn-secondary">Cancel</button>
-                    <button type="submit" class="btn-primary">Create</button>
+                    <button type="submit" class="btn-primary" :disabled="saving" x-text="saving ? 'Creating...' : 'Create Process'"></button>
                 </div>
             </form>
         </div>
@@ -66,20 +139,46 @@
 <script>
 function processesApp() {
     return {
-        processes: [], showCreate: false,
+        processes: [], showCreate: false, showDetail: false, selectedProcess: null, loading: true, saving: false,
         form: { name: '', description: '', category: '0' },
-        async load() { this.processes = await apiRequest('GET', '/processes'); },
+
+        async load() {
+            this.loading = true;
+            try { this.processes = await apiRequest('GET', '/processes'); }
+            catch(e) { showToast('Failed to load processes', 'error'); }
+            finally { this.loading = false; }
+        },
+
+        openCreate() {
+            this.form = { name: '', description: '', category: '0' };
+            this.showCreate = true;
+        },
+
+        openDetail(process) {
+            this.selectedProcess = process;
+            this.showDetail = true;
+        },
+
         async createProcess() {
+            this.saving = true;
             try {
                 await apiRequest('POST', '/processes', { name: this.form.name, description: this.form.description, category: parseInt(this.form.category) });
-                this.showCreate = false; await this.load(); showToast('Process created');
-            } catch(e) { showToast('Failed to create', 'error'); }
+                this.showCreate = false;
+                await this.load();
+                showToast('Process created successfully');
+            } catch(e) { showToast('Failed to create process', 'error'); }
+            finally { this.saving = false; }
         },
+
         async deleteProcess(id) {
-            if(!confirm('Delete this process?')) return;
-            try { await apiRequest('DELETE', `/processes/${id}`); await this.load(); showToast('Deleted'); }
-            catch(e) { showToast('Failed to delete', 'error'); }
+            if(!confirm('Delete this process? Any linked tasks will lose their process reference.')) return;
+            try {
+                await apiRequest('DELETE', `/processes/${id}`);
+                await this.load();
+                showToast('Process deleted');
+            } catch(e) { showToast('Failed to delete process', 'error'); }
         },
+
         categoryColor(cat) {
             const map = { Hygiene: 'bg-blue-500', Maintenance: 'bg-orange-500', Administrative: 'bg-purple-500',
                 Clinical: 'bg-green-500', Safety: 'bg-red-500', Training: 'bg-teal-500', Other: 'bg-gray-500' };

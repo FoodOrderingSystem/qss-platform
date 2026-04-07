@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -8,6 +9,7 @@ using QSS.Domain.Entities;
 using QSS.Infrastructure.Data;
 using QSS.Infrastructure.Services;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,12 +34,28 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     options.Password.RequireDigit = true;
     options.Password.RequireLowercase = true;
     options.Password.RequireUppercase = true;
-    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireNonAlphanumeric = true;
     options.Password.RequiredLength = 8;
     options.User.RequireUniqueEmail = true;
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.AllowedForNewUsers = true;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
+
+// Rate limiting
+builder.Services.AddRateLimiter(o =>
+{
+    o.AddFixedWindowLimiter("login", opts =>
+    {
+        opts.PermitLimit = 10;
+        opts.Window = TimeSpan.FromMinutes(1);
+        opts.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opts.QueueLimit = 0;
+    });
+    o.RejectionStatusCode = 429;
+});
 
 // JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "QSS-Platform-Super-Secret-Key-2024!";
@@ -158,6 +176,7 @@ app.UseSwaggerUI(c =>
 
 app.UseStaticFiles();
 app.UseCors("AllowWebFrontend");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

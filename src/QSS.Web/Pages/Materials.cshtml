@@ -29,7 +29,25 @@
         </div>
     </div>
 
-    <div class="table-wrapper">
+    <!-- Loading state -->
+    <div x-show="loading" class="table-wrapper">
+        <template x-for="i in [1,2,3,4]" :key="i">
+            <div class="flex gap-4 px-4 py-4 border-b border-gray-50 animate-pulse">
+                <div class="flex-1"><div class="h-4 bg-gray-100 rounded mb-1 w-2/3"></div><div class="h-3 bg-gray-100 rounded w-1/4"></div></div>
+                <div class="w-24 h-4 bg-gray-100 rounded self-center"></div>
+                <div class="w-28 h-4 bg-gray-100 rounded self-center"></div>
+                <div class="w-24 h-4 bg-gray-100 rounded self-center"></div>
+            </div>
+        </template>
+    </div>
+
+    <div x-show="!loading && materials.length === 0" class="flex flex-col items-center justify-center py-16 text-center">
+        <i class="fas fa-boxes text-3xl text-gray-200 mb-3"></i>
+        <p class="text-gray-400 font-medium">No materials in inventory</p>
+        <p class="text-xs text-gray-300 mt-1">Click "Add Material" to track your first item</p>
+    </div>
+
+    <div x-show="!loading && materials.length > 0" class="table-wrapper">
         <table class="w-full text-sm">
             <thead class="bg-gray-50 border-b border-gray-100">
                 <tr>
@@ -77,11 +95,14 @@
                 </template>
             </tbody>
         </table>
-    </div>
+    </div><!-- end !loading && materials.length > 0 -->
 
     <div x-show="showCreate" class="modal-backdrop" x-transition>
         <div class="modal p-6">
-            <h2 class="text-lg font-bold text-gray-900 mb-5">Add Material</h2>
+            <div class="flex items-center justify-between mb-5">
+                <h2 class="text-lg font-bold text-gray-900">Add Material</h2>
+                <button type="button" @@click="showCreate = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
             <form x-on:submit.prevent="createMaterial()">
                 <div class="space-y-4">
                     <div class="grid grid-cols-2 gap-3">
@@ -129,19 +150,24 @@
 <script>
 function materialsApp() {
     return {
-        materials: [], showCreate: false,
+        materials: [], showCreate: false, loading: true,
         form: { name: '', category: '', stockQuantity: 0, minimumStockLevel: 5, unit: 0, supplierName: '', supplierLink: '', expirationDate: '' },
-        async load() { this.materials = await apiRequest('GET', '/materials'); },
+        async load() {
+            this.loading = true;
+            try { this.materials = await apiRequest('GET', '/materials'); }
+            catch(e) { showToast('Failed to load materials', 'error'); }
+            finally { this.loading = false; }
+        },
         async createMaterial() {
             try {
                 await apiRequest('POST', '/materials', { ...this.form, expirationDate: this.form.expirationDate || null });
-                this.showCreate = false; await this.load(); showToast('Material added');
-            } catch(e) { showToast('Failed', 'error'); }
+                this.showCreate = false; await this.load(); showToast('Material added successfully');
+            } catch(e) { showToast('Failed to add material', 'error'); }
         },
         async deleteMaterial(id) {
-            if(!confirm('Delete material?')) return;
-            try { await apiRequest('DELETE', `/materials/${id}`); await this.load(); showToast('Deleted'); }
-            catch(e) { showToast('Failed', 'error'); }
+            if(!confirm('Delete this material? This cannot be undone.')) return;
+            try { await apiRequest('DELETE', `/materials/${id}`); await this.load(); showToast('Material deleted'); }
+            catch(e) { showToast('Failed to delete material', 'error'); }
         }
     };
 }
