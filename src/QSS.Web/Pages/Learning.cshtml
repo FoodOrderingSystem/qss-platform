@@ -56,7 +56,7 @@
     </div>
 
     <!-- Upload Modal -->
-    <div x-show="showUpload" class="modal-backdrop" x-transition>
+    <div x-show="showUpload" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showUpload = false">
         <div class="modal p-6">
             <h2 class="text-lg font-bold text-gray-900 mb-5">Upload Learning Material</h2>
             <form x-on:submit.prevent="upload()" enctype="multipart/form-data" id="uploadForm">
