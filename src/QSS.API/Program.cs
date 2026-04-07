@@ -11,10 +11,13 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Ensure the persistent data directory exists before the database is accessed
+Directory.CreateDirectory("/app/data");
+
 // Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")
-        ?? "Data Source=qss.db"));
+        ?? "Data Source=/app/data/qss.db"));
 
 // Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
