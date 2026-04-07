@@ -158,8 +158,20 @@ app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
 app.MapHub<NotificationHub>("/hubs/notifications");
 
-// Health check endpoint for Railway
-app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
+// Health check endpoint for Railway — verifies DB is reachable
+app.MapGet("/health", async (ApplicationDbContext db) =>
+{
+    try
+    {
+        await db.Database.CanConnectAsync();
+        return Results.Ok(new { status = "healthy", database = "connected" });
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { status = "unhealthy", database = "unreachable", error = ex.Message },
+            statusCode: 503);
+    }
+});
 
 // Redirect root to swagger
 app.MapGet("/", () => Results.Redirect("/swagger"));
