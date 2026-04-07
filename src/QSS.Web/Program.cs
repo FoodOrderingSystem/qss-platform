@@ -58,6 +58,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapRazorPages();
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" })).AllowAnonymous();
 app.MapGet("/", context =>
 {
     context.Response.Redirect("/Dashboard");
