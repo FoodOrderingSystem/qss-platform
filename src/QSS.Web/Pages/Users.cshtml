@@ -3,10 +3,10 @@
 @{ ViewData["Title"] = "Users"; }
 
 <div x-data="usersApp()" x-init="load()">
-    <div class="flex items-center justify-between mb-6">
+    <div class="page-header">
         <div><h1 class="text-2xl font-bold text-gray-900">User Management</h1>
         <p class="text-sm text-gray-500">Manage roles and access control</p></div>
-        <button @@click="showCreate = true" class="btn-primary"><i class="fas fa-user-plus"></i> Add User</button>
+        <button @@click="showCreate = true" class="btn-primary flex-shrink-0"><i class="fas fa-user-plus"></i> Add User</button>
     </div>
 
     <!-- Loading state -->
@@ -23,7 +23,8 @@
     </div>
 
     <div x-show="!loading && users.length > 0" x-cloak class="table-wrapper">
-        <table class="w-full text-sm">
+        <div class="table-scroll">
+        <table class="w-full text-sm" style="min-width:560px">
             <thead class="bg-gray-50 border-b border-gray-100">
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-gray-500">User</th>
@@ -64,6 +65,7 @@
                 </template>
             </tbody>
         </table>
+        </div>
     </div><!-- end users table -->
 
     <!-- Create User Modal -->
@@ -76,7 +78,7 @@
             <p class="text-xs text-gray-400 mb-4">Password must be at least 8 characters with upper, lower, digit, and special character.</p>
             <form x-on:submit.prevent="createUser()">
                 <div class="space-y-4">
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div><label class="form-label">First Name *</label>
                         <input x-model="form.firstName" type="text" class="form-input" required /></div>
                         <div><label class="form-label">Last Name *</label>

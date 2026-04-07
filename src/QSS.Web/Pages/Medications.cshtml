@@ -3,10 +3,10 @@
 @{ ViewData["Title"] = "Medications"; }
 
 <div x-data="medsApp()" x-init="load()">
-    <div class="flex items-center justify-between mb-6">
+    <div class="page-header">
         <div><h1 class="text-2xl font-bold text-gray-900">Medications</h1>
         <p class="text-sm text-gray-500">Log quantities, usage, and expiration tracking</p></div>
-        <button @@click="showCreate = true" class="btn-primary"><i class="fas fa-plus"></i> Add Medication</button>
+        <button @@click="showCreate = true" class="btn-primary flex-shrink-0"><i class="fas fa-plus"></i> Add Medication</button>
     </div>
 
     <!-- Loading state -->
@@ -28,7 +28,8 @@
     </div>
 
     <div x-show="!loading && medications.length > 0" x-cloak class="table-wrapper">
-        <table class="w-full text-sm">
+        <div class="table-scroll">
+        <table class="w-full text-sm" style="min-width:560px">
             <thead class="bg-gray-50 border-b border-gray-100">
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-gray-500">Medication</th>
@@ -70,6 +71,7 @@
                 </template>
             </tbody>
         </table>
+        </div>
     </div><!-- end !loading && medications.length > 0 -->
 
     <!-- Create Modal -->
@@ -80,19 +82,19 @@
                 <div class="space-y-4">
                     <div><label class="form-label">Name *</label>
                     <input x-model="form.name" type="text" class="form-input" required /></div>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div><label class="form-label">Active Ingredient</label>
                         <input x-model="form.activeIngredient" type="text" class="form-input" /></div>
                         <div><label class="form-label">Dosage</label>
                         <input x-model="form.dosage" type="text" class="form-input" /></div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div><label class="form-label">Quantity *</label>
                         <input x-model.number="form.quantity" type="number" min="0" class="form-input" required /></div>
                         <div><label class="form-label">Min Quantity</label>
                         <input x-model.number="form.minimumQuantity" type="number" min="0" class="form-input" /></div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div><label class="form-label">Expiration Date</label>
                         <input x-model="form.expirationDate" type="date" class="form-input" /></div>
                         <div><label class="form-label">Batch Number</label>

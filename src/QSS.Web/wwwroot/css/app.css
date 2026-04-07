@@ -34,6 +34,9 @@
     gap: 0.5rem;
     transition: background-color 0.15s ease;
     text-decoration: none;
+    white-space: nowrap;
+    touch-action: manipulation;
+    min-height: 40px;
 }
 .btn-primary:hover:not(:disabled) { background-color: #1d4ed8; }
 .btn-primary:disabled              { opacity: 0.6; cursor: not-allowed; }
@@ -51,6 +54,9 @@
     align-items: center;
     gap: 0.5rem;
     transition: background-color 0.15s ease;
+    white-space: nowrap;
+    touch-action: manipulation;
+    min-height: 40px;
 }
 .btn-secondary:hover { background-color: #e5e7eb; }
 
@@ -67,6 +73,9 @@
     align-items: center;
     gap: 0.5rem;
     transition: background-color 0.15s ease;
+    white-space: nowrap;
+    touch-action: manipulation;
+    min-height: 40px;
 }
 .btn-danger:hover { background-color: #b91c1c; }
 
@@ -80,6 +89,7 @@
     outline: none;
     transition: box-shadow 0.15s ease, border-color 0.15s ease;
     background-color: #ffffff;
+    min-height: 40px;
 }
 .form-input:focus {
     border-color: transparent;
@@ -101,6 +111,15 @@
     box-shadow: 0 1px 2px 0 rgba(0,0,0,.05);
     border: 1px solid #f3f4f6;
     overflow: hidden;
+}
+
+/* Horizontal scroll container for tables on mobile */
+.table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.table-scroll table {
+    min-width: 600px;
 }
 
 /* ─── Modal overlay ─────────────────────────────────────────────────────────── */
@@ -150,6 +169,26 @@
     z-index: 70;
 }
 
+/* ─── Slide-over panel ──────────────────────────────────────────────────────── */
+/* Slide-overs are full-width on mobile, max-w-lg on md+ */
+.slideover-panel {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 100%;
+    width: 100%;
+    max-width: 100%;
+    background-color: #ffffff;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+    display: flex;
+    flex-direction: column;
+}
+@media (min-width: 640px) {
+    .slideover-panel {
+        max-width: 32rem;
+    }
+}
+
 /* ─── QSS Score ring ────────────────────────────────────────────────────────── */
 .qss-score-ring {
     width: 120px;
@@ -158,5 +197,75 @@
 
 /* ─── Sidebar ───────────────────────────────────────────────────────────────── */
 aside {
-    transition: width 0.3s ease;
+    transition: transform 0.3s ease, width 0.3s ease;
+}
+
+/* ─── Page header row ───────────────────────────────────────────────────────── */
+/* Ensures title+button rows wrap nicely on small screens */
+.page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+.page-header > div:first-child {
+    flex: 1;
+    min-width: 0;
+}
+
+/* ─── Filter bar ────────────────────────────────────────────────────────────── */
+.filter-bar {
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+    border: 1px solid #f3f4f6;
+    box-shadow: 0 1px 2px 0 rgba(0,0,0,.05);
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* ─── Loading skeleton ──────────────────────────────────────────────────────── */
+.skeleton {
+    background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 0.25rem;
+}
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ─── Touch targets ─────────────────────────────────────────────────────────── */
+/* Ensure icon-only action buttons are tappable on mobile */
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.375rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    touch-action: manipulation;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+}
+@media (max-width: 639px) {
+    .action-btn {
+        width: 2.25rem;
+        height: 2.25rem;
+    }
+}
+
+/* ─── Responsive utilities ──────────────────────────────────────────────────── */
+/* Prevent any element from causing horizontal overflow */
+.no-overflow {
+    overflow-x: hidden;
+    max-width: 100%;
 }
