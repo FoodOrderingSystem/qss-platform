@@ -661,18 +661,26 @@ function tasksApp() {
             const status = isNaN(statusValue) ? (statusMap[statusValue] ?? 0) : parseInt(statusValue);
             try {
                 await apiRequest('PATCH', `/tasks/${id}/status`, { status });
-                await this.load();
-                showToast('Status updated');
-            } catch(e) { showToast('Failed to update status', 'error'); }
+            } catch(e) {
+                showToast('Failed to update status', 'error');
+                return;
+            }
+            showToast('Status updated');
+            await this.load();
         },
 
         async updateStatusAndRefresh(id, status) {
             try {
                 await apiRequest('PATCH', `/tasks/${id}/status`, { status });
+            } catch(e) {
+                showToast('Failed to update status', 'error');
+                return;
+            }
+            showToast('Status updated');
+            try {
                 this.selectedTask = await apiRequest('GET', `/tasks/${id}`);
                 await this.load();
-                showToast('Status updated');
-            } catch(e) { showToast('Failed to update status', 'error'); }
+            } catch(e) { /* refresh after status update — failure is non-critical */ }
         },
 
         async deleteTask(id) {

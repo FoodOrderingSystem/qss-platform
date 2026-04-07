@@ -148,11 +148,17 @@ public class TasksController : ControllerBase
 
         // Trigger: when a task is completed, activate any tasks that depend on it
         if (dto.Status == QssTaskStatus.Completed)
-            await ActivateDependentTasks(id);
+        {
+            try { await ActivateDependentTasks(id); }
+            catch (Exception ex) { Console.Error.WriteLine($"[TasksController] ActivateDependentTasks failed for task {id}: {ex.Message}"); }
+        }
 
         // Trigger: log device history when a device-linked task is completed
         if (dto.Status == QssTaskStatus.Completed && task.DeviceId.HasValue)
-            await LogDeviceTaskCompletion(task);
+        {
+            try { await LogDeviceTaskCompletion(task); }
+            catch (Exception ex) { Console.Error.WriteLine($"[TasksController] LogDeviceTaskCompletion failed for task {id}: {ex.Message}"); }
+        }
 
         return NoContent();
     }
