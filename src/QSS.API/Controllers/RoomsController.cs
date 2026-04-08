@@ -165,14 +165,44 @@ public class DevicesController : ControllerBase
     {
         var device = await _db.Devices
             .Include(d => d.Room)
-            .Include(d => d.Tasks.Where(t => !t.IsDeleted)).ThenInclude(t => t.Assignee)
-            .Include(d => d.History.Where(h => !h.IsDeleted)).ThenInclude(h => h.PerformedBy)
-            .Include(d => d.History.Where(h => !h.IsDeleted)).ThenInclude(h => h.LinkedTask)
             .FirstOrDefaultAsync(d => d.Id == id);
         if (device == null) return NotFound();
 
         var now = DateTime.UtcNow;
-        var tasks = device.Tasks.ToList();
+
+        // Load tasks and history in separate queries to avoid EF Core filtered-include
+        // duplication issues and to prevent circular entity graph (Task -> Device -> Tasks -> ...)
+        // being serialized. We project directly to DTO to ensure a clean, cycle-free response.
+        var tasks = await _db.Tasks
+            .Where(t => t.DeviceId == id)
+            .Select(t => new DeviceTaskSummaryDto
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Status = t.Status.ToString(),
+                DueDate = t.DueDate,
+                AssigneeName = t.Assignee != null ? t.Assignee.FirstName + " " + t.Assignee.LastName : null,
+                IsOverdue = t.Status == QssTaskStatus.Overdue ||
+                    (t.DueDate != null && t.DueDate < now && t.Status != QssTaskStatus.Completed)
+            })
+            .OrderBy(t => t.DueDate)
+            .ToListAsync();
+
+        var history = await _db.DeviceHistories
+            .Where(h => h.DeviceId == id && !h.IsDeleted)
+            .OrderByDescending(h => h.EventDate)
+            .Select(h => new DeviceHistoryDto
+            {
+                Id = h.Id,
+                EventType = h.EventType,
+                Title = h.Title,
+                Notes = h.Notes,
+                EventDate = h.EventDate,
+                PerformedByName = h.PerformedBy != null ? h.PerformedBy.FirstName + " " + h.PerformedBy.LastName : null,
+                LinkedTaskName = h.LinkedTask != null ? h.LinkedTask.Name : null,
+                LinkedTaskId = h.LinkedTaskId
+            })
+            .ToListAsync();
 
         return Ok(new DeviceDetailDto
         {
@@ -187,29 +217,10 @@ public class DevicesController : ControllerBase
             NextMaintenanceDue = device.NextMaintenanceDue,
             QrCode = device.QrCode,
             RoomId = device.RoomId,
-            RoomName = device.Room?.Name,
+            RoomName = device.Room != null ? device.Room.Name : null,
             MaintenanceOverdue = device.NextMaintenanceDue.HasValue && device.NextMaintenanceDue < now,
-            Tasks = tasks.Select(t => new DeviceTaskSummaryDto
-            {
-                Id = t.Id,
-                Name = t.Name,
-                Status = t.Status.ToString(),
-                DueDate = t.DueDate,
-                AssigneeName = t.Assignee?.FullName,
-                IsOverdue = t.Status == QssTaskStatus.Overdue ||
-                    (t.DueDate.HasValue && t.DueDate < now && t.Status != QssTaskStatus.Completed)
-            }).OrderBy(t => t.DueDate).ToList(),
-            History = device.History.OrderByDescending(h => h.EventDate).Select(h => new DeviceHistoryDto
-            {
-                Id = h.Id,
-                EventType = h.EventType,
-                Title = h.Title,
-                Notes = h.Notes,
-                EventDate = h.EventDate,
-                PerformedByName = h.PerformedBy?.FullName,
-                LinkedTaskName = h.LinkedTask?.Name,
-                LinkedTaskId = h.LinkedTaskId
-            }).ToList()
+            Tasks = tasks,
+            History = history
         });
     }
 
