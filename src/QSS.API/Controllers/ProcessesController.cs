@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QSS.API.Authorization;
 using QSS.Application.DTOs;
 using QSS.Domain.Entities;
 using QSS.Domain.Enums;
@@ -23,12 +24,15 @@ public class ProcessesController : ControllerBase
     {
         var processes = await _db.Processes
             .Include(p => p.Tasks)
+            .Include(p => p.ProcessCategory)
             .Select(p => new ProcessDto
             {
                 Id = p.Id,
                 Name = p.Name,
                 Description = p.Description,
-                Category = p.Category.ToString(),
+                Category = p.ProcessCategory != null ? p.ProcessCategory.Name : p.Category.ToString(),
+                ProcessCategoryId = p.ProcessCategoryId,
+                ProcessCategoryName = p.ProcessCategory != null ? p.ProcessCategory.Name : null,
                 IsActive = p.IsActive,
                 TaskCount = p.Tasks.Count(t => !t.IsDeleted),
                 CreatedAt = p.CreatedAt
@@ -42,6 +46,7 @@ public class ProcessesController : ControllerBase
         var p = await _db.Processes
             .Include(p => p.Tasks.Where(t => !t.IsDeleted))
             .ThenInclude(t => t.Assignee)
+            .Include(p => p.ProcessCategory)
             .FirstOrDefaultAsync(p => p.Id == id);
         if (p == null) return NotFound();
 
@@ -53,7 +58,9 @@ public class ProcessesController : ControllerBase
             Id = p.Id,
             Name = p.Name,
             Description = p.Description,
-            Category = p.Category.ToString(),
+            Category = p.ProcessCategory != null ? p.ProcessCategory.Name : p.Category.ToString(),
+            ProcessCategoryId = p.ProcessCategoryId,
+            ProcessCategoryName = p.ProcessCategory != null ? p.ProcessCategory.Name : null,
             IsActive = p.IsActive,
             TaskCount = tasks.Count,
             CompletedTaskCount = tasks.Count(t => t.Status == QssTaskStatus.Completed),
@@ -74,7 +81,7 @@ public class ProcessesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.ProcessesManage)]
     public async Task<IActionResult> Create([FromBody] CreateProcessDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
@@ -83,6 +90,7 @@ public class ProcessesController : ControllerBase
             Name = dto.Name,
             Description = dto.Description,
             Category = dto.Category,
+            ProcessCategoryId = dto.ProcessCategoryId,
             CreatedByUserId = userId
         };
         _db.Processes.Add(process);
@@ -91,7 +99,7 @@ public class ProcessesController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.ProcessesManage)]
     public async Task<IActionResult> Update(int id, [FromBody] CreateProcessDto dto)
     {
         var process = await _db.Processes.FindAsync(id);
@@ -99,12 +107,13 @@ public class ProcessesController : ControllerBase
         process.Name = dto.Name;
         process.Description = dto.Description;
         process.Category = dto.Category;
+        process.ProcessCategoryId = dto.ProcessCategoryId;
         await _db.SaveChangesAsync();
         return NoContent();
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.ProcessesManage)]
     public async Task<IActionResult> Delete(int id)
     {
         var process = await _db.Processes.FindAsync(id);

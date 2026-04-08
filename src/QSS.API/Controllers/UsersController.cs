@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QSS.API.Authorization;
 using QSS.Application.DTOs;
 using QSS.Domain.Entities;
 
@@ -16,6 +17,7 @@ public class UsersController : ControllerBase
 
     public UsersController(UserManager<ApplicationUser> userManager) => _userManager = userManager;
 
+    // GET is accessible to all authenticated users (needed for task assignment dropdowns)
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -38,7 +40,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.UsersManage)]
     public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
     {
         var user = new ApplicationUser
@@ -57,7 +59,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{id}/deactivate")]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.UsersManage)]
     public async Task<IActionResult> Deactivate(string id)
     {
         var user = await _userManager.FindByIdAsync(id);
@@ -68,7 +70,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{id}/role")]
-    [Authorize(Roles = "Superadmin")]
+    [Authorize(Policy = Permissions.UsersManage)]
     public async Task<IActionResult> ChangeRole(string id, [FromBody] ChangeRoleDto dto)
     {
         var user = await _userManager.FindByIdAsync(id);

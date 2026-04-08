@@ -1,10 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace QSS.Web.Pages;
 
-[Authorize]
+[Authorize(Roles = "Superadmin,Admin,Dentist")]
 public class ReportsModel : PageModel
 {
-    public void OnGet() { }
+    public IActionResult OnGet() => Page();
 }

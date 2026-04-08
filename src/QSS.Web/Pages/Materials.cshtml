@@ -2,11 +2,11 @@
 @model QSS.Web.Pages.MaterialsModel
 @{ ViewData["Title"] = "Materials"; }
 
-<div x-data="materialsApp()" x-init="load()">
+<div x-data="materialsApp(@Model.CanManageMaterials.ToString().ToLower())" x-init="load()">
     <div class="page-header">
         <div><h1 class="text-2xl font-bold text-gray-900">Materials Inventory</h1>
         <p class="text-sm text-gray-500">Track stock levels, expiration dates, and suppliers</p></div>
-        <button @@click="showCreate = true" class="btn-primary flex-shrink-0"><i class="fas fa-plus"></i> Add Material</button>
+        <button x-show="canManage" @@click="showCreate = true" class="btn-primary flex-shrink-0"><i class="fas fa-plus"></i> Add Material</button>
     </div>
 
     <!-- Summary Cards -->
@@ -53,6 +53,7 @@
             <thead class="bg-gray-50 border-b border-gray-100">
                 <tr>
                     <th class="px-4 py-3 text-left font-medium text-gray-500">Material</th>
+                    <th class="px-4 py-3 text-left font-medium text-gray-500">Room</th>
                     <th class="px-4 py-3 text-left font-medium text-gray-500">Stock</th>
                     <th class="px-4 py-3 text-left font-medium text-gray-500">Supplier</th>
                     <th class="px-4 py-3 text-left font-medium text-gray-500">Expiration</th>
@@ -68,6 +69,9 @@
                             <p class="text-xs text-gray-400" x-text="m.category || ''"></p>
                         </td>
                         <td class="px-4 py-3">
+                            <span class="text-xs text-gray-600" x-text="m.roomName || '—'"></span>
+                        </td>
+                        <td class="px-4 py-3">
                             <span class="font-semibold" :class="m.isLowStock ? 'text-orange-600' : 'text-gray-900'"
                                   x-text="m.stockQuantity"></span>
                             <span class="text-gray-400 text-xs" x-text="' / min ' + m.minimumStockLevel + ' ' + m.unit"></span>
@@ -80,7 +84,7 @@
                         </td>
                         <td class="px-4 py-3">
                             <span :class="m.isExpiringSoon ? 'text-red-600 font-medium' : 'text-gray-600'"
-                                  x-text="formatDate(m.expirationDate)"></span>
+                                  x-text="m.expirationDate ? new Date(m.expirationDate).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'}) : '—'"></span>
                         </td>
                         <td class="px-4 py-3">
                             <div class="flex gap-1 flex-wrap">
@@ -90,7 +94,8 @@
                             </div>
                         </td>
                         <td class="px-4 py-3 text-right">
-                            <button @@click="deleteMaterial(m.id)" class="text-red-400 hover:text-red-600 p-1"><i class="fas fa-trash text-xs"></i></button>
+                            <button x-show="canManage" @@click="editMaterial(m)" class="text-gray-400 hover:text-blue-600 p-1 mr-1"><i class="fas fa-pencil text-xs"></i></button>
+                            <button x-show="canManage" @@click="deleteMaterial(m.id)" class="text-red-400 hover:text-red-600 p-1"><i class="fas fa-trash text-xs"></i></button>
                         </td>
                     </tr>
                 </template>
@@ -99,6 +104,7 @@
         </div>
     </div><!-- end !loading && materials.length > 0 -->
 
+    <!-- Create Modal -->
     <div x-show="showCreate" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showCreate = false">
         <div class="modal p-6">
             <div class="flex items-center justify-between mb-5">
@@ -112,6 +118,15 @@
                         <input x-model="form.name" type="text" class="form-input" required /></div>
                         <div><label class="form-label">Category</label>
                         <input x-model="form.category" type="text" class="form-input" placeholder="e.g. PPE" /></div>
+                    </div>
+                    <div>
+                        <label class="form-label">Assigned Room</label>
+                        <select x-model="form.roomId" class="form-input">
+                            <option value="">No specific room</option>
+                            <template x-for="r in rooms" :key="r.id">
+                                <option :value="r.id" x-text="r.name"></option>
+                            </template>
+                        </select>
                     </div>
                     <div class="grid grid-cols-3 gap-3">
                         <div><label class="form-label">Stock Qty *</label>
@@ -146,30 +161,147 @@
             </form>
         </div>
     </div>
+
+    <!-- Edit Modal -->
+    <div x-show="showEdit" x-cloak class="modal-backdrop" x-transition @@keydown.escape.window="showEdit = false">
+        <div class="modal p-6">
+            <div class="flex items-center justify-between mb-5">
+                <h2 class="text-lg font-bold text-gray-900">Edit Material</h2>
+                <button type="button" @@click="showEdit = false" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <form x-on:submit.prevent="updateMaterial()">
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div><label class="form-label">Name *</label>
+                        <input x-model="editForm.name" type="text" class="form-input" required /></div>
+                        <div><label class="form-label">Category</label>
+                        <input x-model="editForm.category" type="text" class="form-input" /></div>
+                    </div>
+                    <div>
+                        <label class="form-label">Assigned Room</label>
+                        <select x-model="editForm.roomId" class="form-input">
+                            <option value="">No specific room</option>
+                            <template x-for="r in rooms" :key="r.id">
+                                <option :value="r.id" x-text="r.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div><label class="form-label">Stock Qty *</label>
+                        <input x-model.number="editForm.stockQuantity" type="number" min="0" class="form-input" required /></div>
+                        <div><label class="form-label">Min Level</label>
+                        <input x-model.number="editForm.minimumStockLevel" type="number" min="0" class="form-input" /></div>
+                        <div><label class="form-label">Unit</label>
+                        <select x-model.number="editForm.unit" class="form-input">
+                            <option value="0">Pieces</option>
+                            <option value="1">Boxes</option>
+                            <option value="2">Bottles</option>
+                            <option value="3">Packs</option>
+                            <option value="4">Liters</option>
+                            <option value="5">Milliliters</option>
+                            <option value="6">Grams</option>
+                            <option value="7">Kilograms</option>
+                        </select></div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div><label class="form-label">Supplier Name</label>
+                        <input x-model="editForm.supplierName" type="text" class="form-input" /></div>
+                        <div><label class="form-label">Supplier URL</label>
+                        <input x-model="editForm.supplierLink" type="url" class="form-input" /></div>
+                    </div>
+                    <div><label class="form-label">Expiration Date</label>
+                    <input x-model="editForm.expirationDate" type="date" class="form-input" /></div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" @@click="showEdit = false" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
 <script>
-function materialsApp() {
+function materialsApp(canManage) {
     return {
-        materials: [], showCreate: false, loading: true,
-        form: { name: '', category: '', stockQuantity: 0, minimumStockLevel: 5, unit: 0, supplierName: '', supplierLink: '', expirationDate: '' },
+        materials: [], rooms: [], canManage,
+        showCreate: false, showEdit: false, loading: true,
+        form: { name: '', category: '', stockQuantity: 0, minimumStockLevel: 5, unit: 0, supplierName: '', supplierLink: '', expirationDate: '', roomId: '' },
+        editForm: { id: null, name: '', category: '', stockQuantity: 0, minimumStockLevel: 5, unit: 0, supplierName: '', supplierLink: '', expirationDate: '', roomId: '' },
+
         async load() {
             this.loading = true;
-            try { this.materials = await apiRequest('GET', '/materials'); }
+            try {
+                [this.materials, this.rooms] = await Promise.all([
+                    apiRequest('GET', '/materials'),
+                    apiRequest('GET', '/rooms').catch(() => [])
+                ]);
+            }
             catch(e) { showToast('Failed to load materials', 'error'); }
             finally { this.loading = false; }
         },
+
         async createMaterial() {
             try {
-                await apiRequest('POST', '/materials', { ...this.form, expirationDate: this.form.expirationDate || null });
-                this.showCreate = false; await this.load(); showToast('Material added successfully');
+                await apiRequest('POST', '/materials', {
+                    ...this.form,
+                    expirationDate: this.form.expirationDate || null,
+                    roomId: this.form.roomId ? parseInt(this.form.roomId) : null
+                });
+                this.showCreate = false;
+                await this.load();
+                showToast('Material added successfully');
             } catch(e) { showToast('Failed to add material', 'error'); }
         },
+
+        editMaterial(m) {
+            this.editForm = {
+                id: m.id,
+                name: m.name,
+                category: m.category || '',
+                stockQuantity: m.stockQuantity,
+                minimumStockLevel: m.minimumStockLevel,
+                unit: m.unit === 'Pieces' ? 0 : m.unit === 'Boxes' ? 1 : m.unit === 'Bottles' ? 2 :
+                      m.unit === 'Packs' ? 3 : m.unit === 'Liters' ? 4 : m.unit === 'Milliliters' ? 5 :
+                      m.unit === 'Grams' ? 6 : m.unit === 'Kilograms' ? 7 : 0,
+                supplierName: m.supplierName || '',
+                supplierLink: m.supplierLink || '',
+                expirationDate: m.expirationDate ? new Date(m.expirationDate).toISOString().split('T')[0] : '',
+                roomId: m.roomId ? String(m.roomId) : ''
+            };
+            this.showEdit = true;
+        },
+
+        async updateMaterial() {
+            try {
+                await apiRequest('PUT', `/materials/${this.editForm.id}`, {
+                    name: this.editForm.name,
+                    description: null,
+                    category: this.editForm.category,
+                    stockQuantity: this.editForm.stockQuantity,
+                    minimumStockLevel: this.editForm.minimumStockLevel,
+                    unit: parseInt(this.editForm.unit),
+                    supplierName: this.editForm.supplierName || null,
+                    supplierLink: this.editForm.supplierLink || null,
+                    expirationDate: this.editForm.expirationDate || null,
+                    roomId: this.editForm.roomId ? parseInt(this.editForm.roomId) : null
+                });
+                this.showEdit = false;
+                await this.load();
+                showToast('Material updated successfully');
+            } catch(e) { showToast('Failed to update material', 'error'); }
+        },
+
         async deleteMaterial(id) {
             if(!confirm('Delete this material? This cannot be undone.')) return;
             try { await apiRequest('DELETE', `/materials/${id}`); await this.load(); showToast('Material deleted'); }
             catch(e) { showToast('Failed to delete material', 'error'); }
+        },
+
+        formatDate(d) {
+            if (!d) return '—';
+            return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
         }
     };
 }

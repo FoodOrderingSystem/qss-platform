@@ -15,6 +15,17 @@ public class RoomDetailDto : RoomDto
 {
     public List<RoomDeviceSummaryDto> Devices { get; set; } = new();
     public List<RoomTaskSummaryDto> Tasks { get; set; } = new();
+    public List<RoomMaterialSummaryDto> Materials { get; set; } = new();
+}
+
+public class RoomMaterialSummaryDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Category { get; set; }
+    public int StockQuantity { get; set; }
+    public string Unit { get; set; } = string.Empty;
+    public bool IsLowStock { get; set; }
 }
 
 public class RoomDeviceSummaryDto

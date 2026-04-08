@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QSS.API.Authorization;
 using QSS.Application.DTOs;
 using QSS.Domain.Entities;
 using QSS.Domain.Enums;
@@ -12,7 +13,7 @@ namespace QSS.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Policy = Permissions.RoomsView)]
 public class RoomsController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
@@ -46,12 +47,25 @@ public class RoomsController : ControllerBase
         var room = await _db.Rooms
             .Include(r => r.Devices.Where(d => !d.IsDeleted))
             .Include(r => r.Tasks.Where(t => !t.IsDeleted)).ThenInclude(t => t.Assignee)
+            .Include(r => r.InventoryItems).ThenInclude(ii => ii.Material)
             .FirstOrDefaultAsync(r => r.Id == id);
         if (room == null) return NotFound();
 
         var now = DateTime.UtcNow;
         var tasks = room.Tasks.ToList();
         var devices = room.Devices.ToList();
+
+        var materials = await _db.Materials
+            .Where(m => m.RoomId == id && !m.IsDeleted)
+            .Select(m => new RoomMaterialSummaryDto
+            {
+                Id = m.Id,
+                Name = m.Name,
+                Category = m.Category,
+                StockQuantity = m.StockQuantity,
+                Unit = m.Unit.ToString(),
+                IsLowStock = m.StockQuantity <= m.MinimumStockLevel
+            }).ToListAsync();
 
         return Ok(new RoomDetailDto
         {
@@ -82,12 +96,13 @@ public class RoomsController : ControllerBase
                 AssigneeName = t.Assignee?.FullName,
                 IsOverdue = t.Status == QssTaskStatus.Overdue ||
                     (t.DueDate.HasValue && t.DueDate < now && t.Status != QssTaskStatus.Completed)
-            }).OrderBy(t => t.DueDate).ToList()
+            }).OrderBy(t => t.DueDate).ToList(),
+            Materials = materials
         });
     }
 
     [HttpPost]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.RoomsManage)]
     public async Task<IActionResult> Create([FromBody] CreateRoomDto dto)
     {
         var room = new Room { Name = dto.Name, Description = dto.Description, Location = dto.Location };
@@ -97,7 +112,7 @@ public class RoomsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.RoomsManage)]
     public async Task<IActionResult> Update(int id, [FromBody] CreateRoomDto dto)
     {
         var room = await _db.Rooms.FindAsync(id);
@@ -110,7 +125,7 @@ public class RoomsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.RoomsManage)]
     public async Task<IActionResult> Delete(int id)
     {
         var room = await _db.Rooms.FindAsync(id);
@@ -123,7 +138,7 @@ public class RoomsController : ControllerBase
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Policy = Permissions.DevicesView)]
 public class DevicesController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
@@ -225,7 +240,7 @@ public class DevicesController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.DevicesManage)]
     public async Task<IActionResult> Create([FromBody] CreateDeviceDto dto)
     {
         var device = new Device
@@ -251,7 +266,7 @@ public class DevicesController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.DevicesManage)]
     public async Task<IActionResult> Update(int id, [FromBody] CreateDeviceDto dto)
     {
         var device = await _db.Devices.FindAsync(id);
@@ -330,7 +345,7 @@ public class DevicesController : ControllerBase
     }
 
     [HttpPost("{id}/history")]
-    [Authorize(Roles = "Superadmin,Admin,Dentist,DentalAssistant")]
+    [Authorize(Policy = Permissions.DevicesView)]
     public async Task<IActionResult> AddHistory(int id, [FromBody] AddDeviceHistoryDto dto)
     {
         var device = await _db.Devices.FindAsync(id);
@@ -359,7 +374,7 @@ public class DevicesController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.DevicesManage)]
     public async Task<IActionResult> Delete(int id)
     {
         var device = await _db.Devices.FindAsync(id);

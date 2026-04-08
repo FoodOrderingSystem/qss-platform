@@ -23,6 +23,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<LearningMaterial> LearningMaterials => Set<LearningMaterial>();
     public DbSet<LearningProgress> LearningProgress => Set<LearningProgress>();
     public DbSet<DeviceHistory> DeviceHistories => Set<DeviceHistory>();
+    public DbSet<ProcessCategoryItem> ProcessCategories => Set<ProcessCategoryItem>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -97,6 +98,20 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .WithMany()
             .HasForeignKey(m => m.UsedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // QssProcess -> ProcessCategoryItem
+        builder.Entity<QssProcess>()
+            .HasOne(p => p.ProcessCategory)
+            .WithMany(c => c.Processes)
+            .HasForeignKey(p => p.ProcessCategoryId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Material -> Room (optional primary room assignment)
+        builder.Entity<Material>()
+            .HasOne(m => m.Room)
+            .WithMany()
+            .HasForeignKey(m => m.RoomId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // Soft delete global query filter example (apply per entity as needed)
         builder.Entity<QssProcess>().HasQueryFilter(p => !p.IsDeleted);

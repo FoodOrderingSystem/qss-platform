@@ -6,5 +6,10 @@ namespace QSS.Web.Pages;
 [Authorize]
 public class ProcessesModel : PageModel
 {
-    public void OnGet() { }
+    public bool CanManageProcesses { get; private set; }
+
+    public void OnGet()
+    {
+        CanManageProcesses = User.IsInRole("Superadmin") || User.IsInRole("Admin");
+    }
 }

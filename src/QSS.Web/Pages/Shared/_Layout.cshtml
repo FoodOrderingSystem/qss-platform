@@ -46,31 +46,135 @@
 
             <nav class="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
                 @{
-                    var navItems = new[]
-                    {
-                        new { Icon = "fas fa-tachometer-alt", Label = "Dashboard", Href = "/Dashboard" },
-                        new { Icon = "fas fa-tasks", Label = "Tasks", Href = "/Tasks" },
-                        new { Icon = "fas fa-project-diagram", Label = "Processes", Href = "/Processes" },
-                        new { Icon = "fas fa-door-open", Label = "Rooms", Href = "/Rooms" },
-                        new { Icon = "fas fa-laptop-medical", Label = "Devices", Href = "/Devices" },
-                        new { Icon = "fas fa-boxes", Label = "Materials", Href = "/Materials" },
-                        new { Icon = "fas fa-pills", Label = "Medications", Href = "/Medications" },
-                        new { Icon = "fas fa-comments", Label = "Chat", Href = "/Chat" },
-                        new { Icon = "fas fa-book-open", Label = "Learning", Href = "/Learning" },
-                        new { Icon = "fas fa-chart-bar", Label = "Reports", Href = "/Reports" },
-                        new { Icon = "fas fa-users", Label = "Users", Href = "/Users" },
-                    };
                     var currentPath = Context.Request.Path.Value ?? "/";
+                    bool isSuperadmin = User.IsInRole("Superadmin");
+                    bool isAdmin = User.IsInRole("Admin");
+                    bool isDentist = User.IsInRole("Dentist");
+                    bool isDentalAssistant = User.IsInRole("DentalAssistant");
+                    bool isPrivileged = isSuperadmin || isAdmin || isDentist;
+                    bool canManage = isSuperadmin || isAdmin;
+
+                    void NavItem(string icon, string label, string href, bool show = true)
+                    {
+                        if (!show) return;
+                        var active = currentPath.StartsWith(href);
+                    }
                 }
-                @foreach (var item in navItems)
+
+                @* Dashboard — Superadmin, Admin, Dentist, DentalAssistant *@
+                @if (isPrivileged || isDentalAssistant)
                 {
-                    var isActive = currentPath.StartsWith(item.Href);
-                    <a href="@item.Href"
-                       x-on:click="if (window.innerWidth < 1024) sidebarOpen = false"
+                    var isActive = currentPath.StartsWith("/Dashboard");
+                    <a href="/Dashboard" x-on:click="if (window.innerWidth < 1024) sidebarOpen = false"
                        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors @(isActive ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white")">
-                        <i class="@item.Icon w-5 text-center flex-shrink-0"></i>
-                        <span class="whitespace-nowrap overflow-hidden transition-all"
-                              :class="sidebarOpen ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'">@item.Label</span>
+                        <i class="fas fa-tachometer-alt w-5 text-center flex-shrink-0"></i>
+                        <span class="whitespace-nowrap overflow-hidden transition-all" :class="sidebarOpen ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'">Dashboard</span>
+                    </a>
+                }
+
+                @* Tasks — all authenticated users *@
+                @{
+                    var tasksActive = currentPath.StartsWith("/Tasks");
+                }
+                <a href="/Tasks" x-on:click="if (window.innerWidth < 1024) sidebarOpen = false"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors @(tasksActive ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white")">
+                    <i class="fas fa-tasks w-5 text-center flex-shrink-0"></i>
+                    <span class="whitespace-nowrap overflow-hidden transition-all" :class="sidebarOpen ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'">Tasks</span>
+                </a>
+
+                @* Processes — all authenticated users *@
+                @{
+                    var processesActive = currentPath.StartsWith("/Processes");
+                }
+                <a href="/Processes" x-on:click="if (window.innerWidth < 1024) sidebarOpen = false"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors @(processesActive ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white")">
+                    <i class="fas fa-project-diagram w-5 text-center flex-shrink-0"></i>
+                    <span class="whitespace-nowrap overflow-hidden transition-all" :class="sidebarOpen ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'">Processes</span>
+                </a>
+
+                @* Rooms — Superadmin, Admin, Dentist, DentalAssistant *@
+                @if (isPrivileged || isDentalAssistant)
+                {
+                    var isActive = currentPath.StartsWith("/Rooms");
+                    <a href="/Rooms" x-on:click="if (window.innerWidth < 1024) sidebarOpen = false"
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors @(isActive ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white")">
+                        <i class="fas fa-door-open w-5 text-center flex-shrink-0"></i>
+                        <span class="whitespace-nowrap overflow-hidden transition-all" :class="sidebarOpen ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'">Rooms</span>
+                    </a>
+                }
+
+                @* Devices — Superadmin, Admin, Dentist, DentalAssistant *@
+                @if (isPrivileged || isDentalAssistant)
+                {
+                    var isActive = currentPath.StartsWith("/Devices");
+                    <a href="/Devices" x-on:click="if (window.innerWidth < 1024) sidebarOpen = false"
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors @(isActive ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white")">
+                        <i class="fas fa-laptop-medical w-5 text-center flex-shrink-0"></i>
+                        <span class="whitespace-nowrap overflow-hidden transition-all" :class="sidebarOpen ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'">Devices</span>
+                    </a>
+                }
+
+                @* Materials — Superadmin, Admin, Dentist, DentalAssistant *@
+                @if (isPrivileged || isDentalAssistant)
+                {
+                    var isActive = currentPath.StartsWith("/Materials");
+                    <a href="/Materials" x-on:click="if (window.innerWidth < 1024) sidebarOpen = false"
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors @(isActive ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white")">
+                        <i class="fas fa-boxes w-5 text-center flex-shrink-0"></i>
+                        <span class="whitespace-nowrap overflow-hidden transition-all" :class="sidebarOpen ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'">Materials</span>
+                    </a>
+                }
+
+                @* Medications — Superadmin, Admin, Dentist, DentalAssistant *@
+                @if (isPrivileged || isDentalAssistant)
+                {
+                    var isActive = currentPath.StartsWith("/Medications");
+                    <a href="/Medications" x-on:click="if (window.innerWidth < 1024) sidebarOpen = false"
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors @(isActive ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white")">
+                        <i class="fas fa-pills w-5 text-center flex-shrink-0"></i>
+                        <span class="whitespace-nowrap overflow-hidden transition-all" :class="sidebarOpen ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'">Medications</span>
+                    </a>
+                }
+
+                @* Chat — all authenticated users *@
+                @{
+                    var chatActive = currentPath.StartsWith("/Chat");
+                }
+                <a href="/Chat" x-on:click="if (window.innerWidth < 1024) sidebarOpen = false"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors @(chatActive ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white")">
+                    <i class="fas fa-comments w-5 text-center flex-shrink-0"></i>
+                    <span class="whitespace-nowrap overflow-hidden transition-all" :class="sidebarOpen ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'">Chat</span>
+                </a>
+
+                @* Learning — all authenticated users *@
+                @{
+                    var learningActive = currentPath.StartsWith("/Learning");
+                }
+                <a href="/Learning" x-on:click="if (window.innerWidth < 1024) sidebarOpen = false"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors @(learningActive ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white")">
+                    <i class="fas fa-book-open w-5 text-center flex-shrink-0"></i>
+                    <span class="whitespace-nowrap overflow-hidden transition-all" :class="sidebarOpen ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'">Learning</span>
+                </a>
+
+                @* Reports — Superadmin, Admin, Dentist *@
+                @if (isPrivileged)
+                {
+                    var isActive = currentPath.StartsWith("/Reports");
+                    <a href="/Reports" x-on:click="if (window.innerWidth < 1024) sidebarOpen = false"
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors @(isActive ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white")">
+                        <i class="fas fa-chart-bar w-5 text-center flex-shrink-0"></i>
+                        <span class="whitespace-nowrap overflow-hidden transition-all" :class="sidebarOpen ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'">Reports</span>
+                    </a>
+                }
+
+                @* Users — Superadmin and Admin only *@
+                @if (canManage)
+                {
+                    var isActive = currentPath.StartsWith("/Users");
+                    <a href="/Users" x-on:click="if (window.innerWidth < 1024) sidebarOpen = false"
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors @(isActive ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white")">
+                        <i class="fas fa-users w-5 text-center flex-shrink-0"></i>
+                        <span class="whitespace-nowrap overflow-hidden transition-all" :class="sidebarOpen ? 'opacity-100 max-w-full' : 'opacity-0 max-w-0'">Users</span>
                     </a>
                 }
             </nav>
