@@ -23,18 +23,22 @@ public class ProcessesController : ControllerBase
     public async Task<IActionResult> GetAll()
     {
         var processes = await _db.Processes
-            .Include(p => p.Tasks)
             .Include(p => p.ProcessCategory)
             .Select(p => new ProcessDto
             {
                 Id = p.Id,
                 Name = p.Name,
                 Description = p.Description,
+                // Use managed category name when available, fall back to legacy enum
                 Category = p.ProcessCategory != null ? p.ProcessCategory.Name : p.Category.ToString(),
                 ProcessCategoryId = p.ProcessCategoryId,
                 ProcessCategoryName = p.ProcessCategory != null ? p.ProcessCategory.Name : null,
                 IsActive = p.IsActive,
-                TaskCount = p.Tasks.Count(t => !t.IsDeleted),
+                // Global query filter on Tasks already excludes IsDeleted=true rows;
+                // using p.Tasks.Count() avoids the double-filter that can cause
+                // EF Core 8 translation errors when IsDeleted is filtered both by
+                // the global filter and by an explicit lambda predicate.
+                TaskCount = p.Tasks.Count(),
                 CreatedAt = p.CreatedAt
             }).ToListAsync();
         return Ok(processes);
