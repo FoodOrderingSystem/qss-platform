@@ -288,17 +288,26 @@ public class DevicesController : ControllerBase
             device.LastMaintenanceDate = DateTime.UtcNow;
             device.NextMaintenanceDue = dto.NextMaintenanceDue;
 
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-            var history = new DeviceHistory
+            // PerformedByUserId is nullable — guard against missing claim
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            try
             {
-                DeviceId = id,
-                EventType = "Maintenance",
-                Title = "Maintenance schedule updated",
-                Notes = $"Next maintenance set to {dto.NextMaintenanceDue:d}",
-                EventDate = DateTime.UtcNow,
-                PerformedByUserId = userId
-            };
-            _db.DeviceHistories.Add(history);
+                var history = new DeviceHistory
+                {
+                    DeviceId          = id,
+                    EventType         = "Maintenance",
+                    Title             = "Maintenance schedule updated",
+                    Notes             = $"Next maintenance set to {dto.NextMaintenanceDue:d}",
+                    EventDate         = DateTime.UtcNow,
+                    PerformedByUserId = userId
+                };
+                _db.DeviceHistories.Add(history);
+            }
+            catch (Exception ex)
+            {
+                // History creation failure must not abort the device update
+                Console.Error.WriteLine($"[DevicesController] Failed to create history for device {id}: {ex.Message}");
+            }
         }
         else
         {
@@ -325,10 +334,11 @@ public class DevicesController : ControllerBase
     [HttpGet("{id}/history")]
     public async Task<IActionResult> GetHistory(int id)
     {
+        // Note: .Include() is intentionally omitted here. EF Core ignores Include
+        // when a .Select() projection is present and generates LEFT JOINs directly
+        // from the navigation property accesses inside Select.
         var history = await _db.DeviceHistories
             .Where(h => h.DeviceId == id && !h.IsDeleted)
-            .Include(h => h.PerformedBy)
-            .Include(h => h.LinkedTask)
             .OrderByDescending(h => h.EventDate)
             .Select(h => new DeviceHistoryDto
             {
@@ -337,7 +347,9 @@ public class DevicesController : ControllerBase
                 Title = h.Title,
                 Notes = h.Notes,
                 EventDate = h.EventDate,
-                PerformedByName = h.PerformedBy != null ? h.PerformedBy.FirstName + " " + h.PerformedBy.LastName : null,
+                PerformedByName = h.PerformedBy != null
+                    ? h.PerformedBy.FirstName + " " + h.PerformedBy.LastName
+                    : null,
                 LinkedTaskName = h.LinkedTask != null ? h.LinkedTask.Name : null,
                 LinkedTaskId = h.LinkedTaskId
             }).ToListAsync();

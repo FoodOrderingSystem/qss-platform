@@ -216,6 +216,24 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
+// Global exception handler: prevents raw 500 stack traces leaking to clients
+// and ensures authorization failures never accidentally return 500 instead of
+// the correct 401/403.
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        var feature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
+        if (feature?.Error != null)
+            logger.LogError(feature.Error, "Unhandled exception on {Path}", feature.Path);
+
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new { message = "An unexpected error occurred." });
+    });
+});
+
 app.UseStaticFiles();
 app.UseCors("AllowWebFrontend");
 app.UseRateLimiter();

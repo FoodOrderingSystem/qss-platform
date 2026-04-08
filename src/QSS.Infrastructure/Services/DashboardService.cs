@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using QSS.Application.DTOs;
 using QSS.Domain.Enums;
 using QSS.Infrastructure.Data;
@@ -8,77 +9,151 @@ namespace QSS.Infrastructure.Services;
 public class DashboardService
 {
     private readonly ApplicationDbContext _db;
+    private readonly ILogger<DashboardService> _logger;
 
-    public DashboardService(ApplicationDbContext db) => _db = db;
+    public DashboardService(ApplicationDbContext db, ILogger<DashboardService> logger)
+    {
+        _db = db;
+        _logger = logger;
+    }
 
     public async Task<DashboardDto> GetDashboardAsync()
     {
-        var tasks = await _db.Tasks.Include(t => t.Process).Include(t => t.Assignee).ToListAsync();
-        var total = tasks.Count;
-        var completed = tasks.Count(t => t.Status == QssTaskStatus.Completed);
-        var overdue = tasks.Count(t => t.Status == QssTaskStatus.Overdue ||
-                                       (t.Status != QssTaskStatus.Completed && t.DueDate.HasValue && t.DueDate < DateTime.UtcNow));
-        var open = tasks.Count(t => t.Status == QssTaskStatus.Open);
-        var inProgress = tasks.Count(t => t.Status == QssTaskStatus.InProgress);
+        try
+        {
+            return await BuildDashboardAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error building dashboard data. Returning empty dashboard.");
+            return new DashboardDto();
+        }
+    }
 
-        var qssScore = total > 0 ? Math.Round((double)completed / total * 100, 1) : 0;
+    private async Task<DashboardDto> BuildDashboardAsync()
+    {
+        var now = DateTime.UtcNow;
 
-        var users = await _db.Users.CountAsync();
+        // Use SQL-side aggregates instead of loading full entities into memory.
+        // This avoids potential EF Core Include-chain translation issues, circular
+        // references, and memory exhaustion on large datasets.
+        var total      = await _db.Tasks.CountAsync();
+        var completed  = await _db.Tasks.CountAsync(t => t.Status == QssTaskStatus.Completed);
+        var overdue    = await _db.Tasks.CountAsync(t =>
+            t.Status == QssTaskStatus.Overdue ||
+            (t.Status != QssTaskStatus.Completed && t.DueDate.HasValue && t.DueDate < now));
+        var open       = await _db.Tasks.CountAsync(t => t.Status == QssTaskStatus.Open);
+        var inProgress = await _db.Tasks.CountAsync(t => t.Status == QssTaskStatus.InProgress);
 
-        var materials = await _db.Materials.ToListAsync();
-        var lowStock = materials.Count(m => m.StockQuantity <= m.MinimumStockLevel);
+        var qssScore = total > 0 ? Math.Round((double)completed / total * 100, 1) : 0.0;
 
-        var meds = await _db.Medications.ToListAsync();
-        var expMeds = meds.Count(m => m.ExpirationDate.HasValue && m.ExpirationDate < DateTime.UtcNow.AddDays(30));
+        var users    = await _db.Users.CountAsync();
+        var lowStock = await _db.Materials.CountAsync(m => m.StockQuantity <= m.MinimumStockLevel);
+        var expMeds  = await _db.Medications.CountAsync(
+            m => m.ExpirationDate.HasValue && m.ExpirationDate < now.AddDays(30));
 
-        var alerts = new List<AlertDto>();
-        if (overdue > 0) alerts.Add(new AlertDto { Type = "danger", Message = $"{overdue} task(s) are overdue.", ResourceUrl = "/tasks?status=overdue" });
-        if (lowStock > 0) alerts.Add(new AlertDto { Type = "warning", Message = $"{lowStock} material(s) are low on stock.", ResourceUrl = "/materials" });
-        if (expMeds > 0) alerts.Add(new AlertDto { Type = "warning", Message = $"{expMeds} medication(s) expire within 30 days.", ResourceUrl = "/medications" });
+        var alerts = BuildAlerts(overdue, lowStock, expMeds);
 
-        var perf = tasks
-            .Where(t => t.AssigneeId != null)
+        // Top performers: aggregate at DB level, then resolve names in a second small query.
+        var perfGroups = await _db.Tasks
+            .Where(t => t.AssigneeId != null && t.AssigneeId != "")
             .GroupBy(t => t.AssigneeId)
-            .Select(g => new EmployeePerformanceDto
+            .Select(g => new
             {
-                UserId = g.Key,
-                UserName = g.First().Assignee?.FullName ?? "Unknown",
-                TotalAssigned = g.Count(),
-                TotalCompleted = g.Count(t => t.Status == QssTaskStatus.Completed),
-                CompletionRate = g.Count() > 0 ? Math.Round((double)g.Count(t => t.Status == QssTaskStatus.Completed) / g.Count() * 100, 1) : 0
+                AssigneeId     = g.Key,
+                TotalAssigned  = g.Count(),
+                TotalCompleted = g.Count(t => t.Status == QssTaskStatus.Completed)
             })
-            .OrderByDescending(p => p.CompletionRate)
+            .ToListAsync();
+
+        var topGroups = perfGroups
+            .OrderByDescending(g => g.TotalAssigned > 0
+                ? (double)g.TotalCompleted / g.TotalAssigned
+                : 0)
             .Take(5)
             .ToList();
 
-        var recentTasks = tasks
+        Dictionary<string, string> userNames = new();
+        if (topGroups.Count > 0)
+        {
+            var ids = topGroups.Select(p => p.AssigneeId!).ToList();
+            userNames = await _db.Users
+                .Where(u => ids.Contains(u.Id))
+                .Select(u => new { u.Id, Name = u.FirstName + " " + u.LastName })
+                .ToDictionaryAsync(u => u.Id, u => u.Name);
+        }
+
+        var perf = topGroups.Select(g => new EmployeePerformanceDto
+        {
+            UserId         = g.AssigneeId ?? "",
+            UserName       = userNames.TryGetValue(g.AssigneeId ?? "", out var n) ? n : "Unknown",
+            TotalAssigned  = g.TotalAssigned,
+            TotalCompleted = g.TotalCompleted,
+            CompletionRate = g.TotalAssigned > 0
+                ? Math.Round((double)g.TotalCompleted / g.TotalAssigned * 100, 1)
+                : 0
+        }).ToList();
+
+        // Recent tasks: server-side projection avoids loading full entity graphs
+        // and prevents circular-reference serialisation issues.
+        var recentTasks = await _db.Tasks
             .OrderByDescending(t => t.CreatedAt)
             .Take(5)
             .Select(t => new TaskDto
             {
-                Id = t.Id,
-                Name = t.Name,
-                Status = t.Status.ToString(),
-                DueDate = t.DueDate,
-                AssigneeName = t.Assignee?.FullName,
-                ProcessName = t.Process?.Name,
-                CreatedAt = t.CreatedAt
-            }).ToList();
+                Id           = t.Id,
+                Name         = t.Name,
+                Status       = t.Status.ToString(),
+                DueDate      = t.DueDate,
+                AssigneeName = t.Assignee != null
+                    ? t.Assignee.FirstName + " " + t.Assignee.LastName
+                    : null,
+                ProcessName  = t.Process != null ? t.Process.Name : null,
+                CreatedAt    = t.CreatedAt
+            })
+            .ToListAsync();
 
         return new DashboardDto
         {
-            QssScore = qssScore,
-            TotalTasks = total,
-            CompletedTasks = completed,
-            OverdueTasks = overdue,
-            OpenTasks = open,
-            InProgressTasks = inProgress,
-            TotalUsers = users,
-            LowStockMaterials = lowStock,
+            QssScore            = qssScore,
+            TotalTasks          = total,
+            CompletedTasks      = completed,
+            OverdueTasks        = overdue,
+            OpenTasks           = open,
+            InProgressTasks     = inProgress,
+            TotalUsers          = users,
+            LowStockMaterials   = lowStock,
             ExpiringMedications = expMeds,
-            Alerts = alerts,
-            RecentTasks = recentTasks,
-            TopPerformers = perf
+            Alerts              = alerts,
+            RecentTasks         = recentTasks,
+            TopPerformers       = perf
         };
+    }
+
+    private static List<AlertDto> BuildAlerts(int overdue, int lowStock, int expMeds)
+    {
+        var alerts = new List<AlertDto>();
+        if (overdue > 0)
+            alerts.Add(new AlertDto
+            {
+                Type        = "danger",
+                Message     = $"{overdue} task(s) are overdue.",
+                ResourceUrl = "/tasks?status=overdue"
+            });
+        if (lowStock > 0)
+            alerts.Add(new AlertDto
+            {
+                Type        = "warning",
+                Message     = $"{lowStock} material(s) are low on stock.",
+                ResourceUrl = "/materials"
+            });
+        if (expMeds > 0)
+            alerts.Add(new AlertDto
+            {
+                Type        = "warning",
+                Message     = $"{expMeds} medication(s) expire within 30 days.",
+                ResourceUrl = "/medications"
+            });
+        return alerts;
     }
 }

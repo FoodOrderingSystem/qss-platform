@@ -30,7 +30,9 @@ public class ProcessCategoriesController : ControllerBase
                 Description = c.Description,
                 IsActive = c.IsActive,
                 SortOrder = c.SortOrder,
-                ProcessCount = c.Processes.Count(p => !p.IsDeleted)
+                // Global query filter on QssProcess already excludes IsDeleted rows;
+                // avoid explicit double-filter to prevent EF Core translation issues.
+                ProcessCount = c.Processes.Count()
             }).ToListAsync();
         return Ok(categories);
     }
