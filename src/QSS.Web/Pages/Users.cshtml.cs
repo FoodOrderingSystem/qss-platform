@@ -1,10 +1,17 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace QSS.Web.Pages;
 
-[Authorize]
+[Authorize(Roles = "Superadmin,Admin")]
 public class UsersModel : PageModel
 {
-    public void OnGet() { }
+    public bool IsSuperadmin { get; private set; }
+
+    public IActionResult OnGet()
+    {
+        IsSuperadmin = User.IsInRole("Superadmin");
+        return Page();
+    }
 }

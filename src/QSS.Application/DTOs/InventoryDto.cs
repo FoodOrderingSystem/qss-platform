@@ -16,6 +16,8 @@ public class MaterialDto
     public bool IsLowStock { get; set; }
     public bool IsExpiringSoon { get; set; }
     public string? Category { get; set; }
+    public int? RoomId { get; set; }
+    public string? RoomName { get; set; }
 }
 
 public class CreateMaterialDto
@@ -29,6 +31,7 @@ public class CreateMaterialDto
     public MaterialUnit Unit { get; set; } = MaterialUnit.Pieces;
     public DateTime? ExpirationDate { get; set; }
     public string? Category { get; set; }
+    public int? RoomId { get; set; }
 }
 
 public class MedicationDto

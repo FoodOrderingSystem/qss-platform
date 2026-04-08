@@ -8,6 +8,8 @@ public class ProcessDto
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string Category { get; set; } = string.Empty;
+    public int? ProcessCategoryId { get; set; }
+    public string? ProcessCategoryName { get; set; }
     public bool IsActive { get; set; }
     public int TaskCount { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -35,4 +37,22 @@ public class CreateProcessDto
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public ProcessCategory Category { get; set; }
+    public int? ProcessCategoryId { get; set; }
+}
+
+public class ProcessCategoryItemDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public bool IsActive { get; set; }
+    public int SortOrder { get; set; }
+    public int ProcessCount { get; set; }
+}
+
+public class CreateProcessCategoryItemDto
+{
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int SortOrder { get; set; }
 }

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using QSS.API.Authorization;
 using QSS.API.Hubs;
 using QSS.Domain.Entities;
 using QSS.Infrastructure.Data;
@@ -94,7 +95,48 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    // Tasks
+    options.AddPolicy(Permissions.TasksCreate,       p => p.RequireRole("Superadmin", "Admin", "Dentist"));
+    options.AddPolicy(Permissions.TasksEdit,         p => p.RequireRole("Superadmin", "Admin", "Dentist"));
+    options.AddPolicy(Permissions.TasksDelete,       p => p.RequireRole("Superadmin", "Admin"));
+    options.AddPolicy(Permissions.TasksUpdateStatus, p => p.RequireRole("Superadmin", "Admin", "Dentist", "DentalAssistant", "Trainee"));
+    options.AddPolicy(Permissions.TasksAddComment,   p => p.RequireRole("Superadmin", "Admin", "Dentist", "DentalAssistant", "Trainee"));
+
+    // Processes
+    options.AddPolicy(Permissions.ProcessesManage, p => p.RequireRole("Superadmin", "Admin"));
+
+    // Devices
+    options.AddPolicy(Permissions.DevicesView,   p => p.RequireRole("Superadmin", "Admin", "Dentist", "DentalAssistant"));
+    options.AddPolicy(Permissions.DevicesManage, p => p.RequireRole("Superadmin", "Admin"));
+
+    // Materials
+    options.AddPolicy(Permissions.MaterialsView,   p => p.RequireRole("Superadmin", "Admin", "Dentist", "DentalAssistant"));
+    options.AddPolicy(Permissions.MaterialsManage, p => p.RequireRole("Superadmin", "Admin"));
+
+    // Medications
+    options.AddPolicy(Permissions.MedicationsView,     p => p.RequireRole("Superadmin", "Admin", "Dentist", "DentalAssistant"));
+    options.AddPolicy(Permissions.MedicationsManage,   p => p.RequireRole("Superadmin", "Admin", "Dentist"));
+    options.AddPolicy(Permissions.MedicationsLogUsage, p => p.RequireRole("Superadmin", "Admin", "Dentist", "DentalAssistant"));
+
+    // Rooms
+    options.AddPolicy(Permissions.RoomsView,   p => p.RequireRole("Superadmin", "Admin", "Dentist", "DentalAssistant"));
+    options.AddPolicy(Permissions.RoomsManage, p => p.RequireRole("Superadmin", "Admin"));
+
+    // Users
+    options.AddPolicy(Permissions.UsersView,   p => p.RequireRole("Superadmin", "Admin"));
+    options.AddPolicy(Permissions.UsersManage, p => p.RequireRole("Superadmin"));
+
+    // Reports
+    options.AddPolicy(Permissions.ReportsView, p => p.RequireRole("Superadmin", "Admin", "Dentist"));
+
+    // Learning
+    options.AddPolicy(Permissions.LearningManage, p => p.RequireRole("Superadmin", "Admin"));
+
+    // Process Categories
+    options.AddPolicy(Permissions.CategoriesManage, p => p.RequireRole("Superadmin", "Admin"));
+});
 
 // SignalR
 builder.Services.AddSignalR();

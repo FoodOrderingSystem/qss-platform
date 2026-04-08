@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using QSS.API.Authorization;
 using QSS.Application.DTOs;
 using QSS.Domain.Entities;
 using QSS.Domain.Enums;
@@ -26,8 +27,18 @@ public class TasksController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] string? status, [FromQuery] string? assigneeId)
+    public async Task<IActionResult> GetAll(
+        [FromQuery] string? status,
+        [FromQuery] string? assigneeId,
+        [FromQuery] string? period,
+        [FromQuery] int? processId,
+        [FromQuery] int? roomId,
+        [FromQuery] int? deviceId,
+        [FromQuery] bool myTasks = false)
     {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var isPrivileged = User.IsInRole("Superadmin") || User.IsInRole("Admin") || User.IsInRole("Dentist");
+
         var query = _db.Tasks
             .Include(t => t.Process)
             .Include(t => t.Assignee)
@@ -36,11 +47,43 @@ public class TasksController : ControllerBase
             .Include(t => t.DependsOnTask)
             .AsQueryable();
 
+        // Non-privileged users (DentalAssistant, Trainee) can only see their own tasks
+        if (!isPrivileged || myTasks)
+        {
+            query = query.Where(t => t.AssigneeId == userId);
+        }
+        else if (!string.IsNullOrWhiteSpace(assigneeId))
+        {
+            query = query.Where(t => t.AssigneeId == assigneeId);
+        }
+
         if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<QssTaskStatus>(status, true, out var statusEnum))
             query = query.Where(t => t.Status == statusEnum);
 
-        if (!string.IsNullOrWhiteSpace(assigneeId))
-            query = query.Where(t => t.AssigneeId == assigneeId);
+        if (processId.HasValue)
+            query = query.Where(t => t.ProcessId == processId.Value);
+
+        if (roomId.HasValue)
+            query = query.Where(t => t.RoomId == roomId.Value);
+
+        if (deviceId.HasValue)
+            query = query.Where(t => t.DeviceId == deviceId.Value);
+
+        // Time-period filters
+        if (!string.IsNullOrWhiteSpace(period))
+        {
+            var today = DateTime.UtcNow.Date;
+            query = period.ToLower() switch
+            {
+                "today"    => query.Where(t => t.DueDate.HasValue && t.DueDate.Value.Date == today),
+                "tomorrow" => query.Where(t => t.DueDate.HasValue && t.DueDate.Value.Date == today.AddDays(1)),
+                "week"     => query.Where(t => t.DueDate.HasValue && t.DueDate.Value.Date >= today && t.DueDate.Value.Date <= today.AddDays(6)),
+                "nextweek" => query.Where(t => t.DueDate.HasValue && t.DueDate.Value.Date >= today.AddDays(7) && t.DueDate.Value.Date <= today.AddDays(13)),
+                "month"    => query.Where(t => t.DueDate.HasValue && t.DueDate.Value.Date >= today && t.DueDate.Value.Date <= today.AddDays(29)),
+                "overdue"  => query.Where(t => t.DueDate.HasValue && t.DueDate.Value.Date < today && t.Status != QssTaskStatus.Completed),
+                _ => query
+            };
+        }
 
         var tasks = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
         return Ok(tasks.Select(t => MapToDto(t)));
@@ -49,6 +92,9 @@ public class TasksController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(int id)
     {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var isPrivileged = User.IsInRole("Superadmin") || User.IsInRole("Admin") || User.IsInRole("Dentist");
+
         var t = await _db.Tasks
             .Include(t => t.Process)
             .Include(t => t.Assignee)
@@ -58,6 +104,10 @@ public class TasksController : ControllerBase
             .Include(t => t.Comments).ThenInclude(c => c.Author)
             .FirstOrDefaultAsync(t => t.Id == id);
         if (t == null) return NotFound();
+
+        // Non-privileged users can only view their own tasks
+        if (!isPrivileged && t.AssigneeId != userId)
+            return Forbid();
 
         var dto = MapToDto(t);
         dto.Comments = t.Comments.OrderBy(c => c.CreatedAt).Select(c => new TaskCommentDto
@@ -75,7 +125,7 @@ public class TasksController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Superadmin,Admin,Dentist")]
+    [Authorize(Policy = Permissions.TasksCreate)]
     public async Task<IActionResult> Create([FromBody] CreateTaskDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
@@ -115,7 +165,7 @@ public class TasksController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Superadmin,Admin,Dentist")]
+    [Authorize(Policy = Permissions.TasksEdit)]
     public async Task<IActionResult> Update(int id, [FromBody] CreateTaskDto dto)
     {
         var task = await _db.Tasks.FindAsync(id);
@@ -136,11 +186,19 @@ public class TasksController : ControllerBase
     }
 
     [HttpPatch("{id}/status")]
-    [Authorize(Roles = "Superadmin,Admin,Dentist,DentalAssistant")]
+    [Authorize(Policy = Permissions.TasksUpdateStatus)]
     public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateTaskStatusDto dto)
     {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var isPrivileged = User.IsInRole("Superadmin") || User.IsInRole("Admin") || User.IsInRole("Dentist");
+
         var task = await _db.Tasks.FindAsync(id);
         if (task == null) return NotFound();
+
+        // Non-privileged users can only update status on their own tasks
+        if (!isPrivileged && task.AssigneeId != userId)
+            return Forbid();
+
         task.Status = dto.Status;
         if (dto.Status == QssTaskStatus.Completed)
             task.CompletedAt = DateTime.UtcNow;
@@ -164,10 +222,18 @@ public class TasksController : ControllerBase
     }
 
     [HttpPost("{id}/comments")]
-    [Authorize(Roles = "Superadmin,Admin,Dentist,DentalAssistant")]
+    [Authorize(Policy = Permissions.TasksAddComment)]
     public async Task<IActionResult> AddComment(int id, [FromBody] AddCommentDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        var isPrivileged = User.IsInRole("Superadmin") || User.IsInRole("Admin") || User.IsInRole("Dentist");
+
+        var task = await _db.Tasks.FindAsync(id);
+        if (task == null) return NotFound();
+
+        // Non-privileged users can only comment on their own tasks
+        if (!isPrivileged && task.AssigneeId != userId)
+            return Forbid();
 
         if (!string.IsNullOrEmpty(dto.MentionedUserId))
         {
@@ -206,7 +272,7 @@ public class TasksController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.TasksDelete)]
     public async Task<IActionResult> Delete(int id)
     {
         var task = await _db.Tasks.FindAsync(id);
@@ -224,7 +290,6 @@ public class TasksController : ControllerBase
 
         foreach (var dep in dependentTasks)
         {
-            // Mark as InProgress to signal it is now unblocked and ready
             dep.Status = QssTaskStatus.InProgress;
         }
 

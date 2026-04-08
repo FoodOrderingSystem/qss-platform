@@ -543,6 +543,9 @@ namespace QSS.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("RoomId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("StockQuantity")
                         .HasColumnType("INTEGER");
 
@@ -560,7 +563,42 @@ namespace QSS.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("RoomId");
+
                     b.ToTable("Materials");
+                });
+
+            modelBuilder.Entity("QSS.Domain.Entities.ProcessCategoryItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ProcessCategories");
                 });
 
             modelBuilder.Entity("QSS.Domain.Entities.Medication", b =>
@@ -683,12 +721,17 @@ namespace QSS.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("ProcessCategoryId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ProcessCategoryId");
 
                     b.ToTable("Processes");
                 });
@@ -1042,6 +1085,16 @@ namespace QSS.Infrastructure.Data.Migrations
                     b.Navigation("UsedBy");
                 });
 
+            modelBuilder.Entity("QSS.Domain.Entities.Material", b =>
+                {
+                    b.HasOne("QSS.Domain.Entities.Room", "Room")
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Room");
+                });
+
             modelBuilder.Entity("QSS.Domain.Entities.QssProcess", b =>
                 {
                     b.HasOne("QSS.Domain.Entities.ApplicationUser", "CreatedBy")
@@ -1050,7 +1103,14 @@ namespace QSS.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("QSS.Domain.Entities.ProcessCategoryItem", "ProcessCategory")
+                        .WithMany("Processes")
+                        .HasForeignKey("ProcessCategoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("CreatedBy");
+
+                    b.Navigation("ProcessCategory");
                 });
 
             modelBuilder.Entity("QSS.Domain.Entities.QssTask", b =>
@@ -1177,6 +1237,11 @@ namespace QSS.Infrastructure.Data.Migrations
             modelBuilder.Entity("QSS.Domain.Entities.Medication", b =>
                 {
                     b.Navigation("UsageLogs");
+                });
+
+            modelBuilder.Entity("QSS.Domain.Entities.ProcessCategoryItem", b =>
+                {
+                    b.Navigation("Processes");
                 });
 
             modelBuilder.Entity("QSS.Domain.Entities.QssProcess", b =>

@@ -1,0 +1,13 @@
+@page
+@{ ViewData["Title"] = "Access Denied"; Layout = "_Layout"; }
+
+<div class="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+    <div class="w-20 h-20 bg-red-50 rounded-2xl flex items-center justify-center mb-6">
+        <i class="fas fa-lock text-3xl text-red-400"></i>
+    </div>
+    <h1 class="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
+    <p class="text-gray-500 mb-6 max-w-md">You do not have permission to access this page. Please contact your administrator if you believe this is a mistake.</p>
+    <a href="/Dashboard" class="btn-primary">
+        <i class="fas fa-home mr-2"></i> Back to Dashboard
+    </a>
+</div>

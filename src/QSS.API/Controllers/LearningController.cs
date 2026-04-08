@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QSS.API.Authorization;
 using QSS.Application.DTOs;
 using QSS.Domain.Entities;
 using QSS.Infrastructure.Data;
@@ -51,7 +52,7 @@ public class LearningController : ControllerBase
     }
 
     [HttpPost("upload")]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.LearningManage)]
     public async Task<IActionResult> Upload([FromForm] UploadMaterialDto dto)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
@@ -116,7 +117,7 @@ public class LearningController : ControllerBase
     }
 
     [HttpGet("progress")]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.LearningManage)]
     public async Task<IActionResult> GetAllProgress()
     {
         var progress = await _db.LearningProgress

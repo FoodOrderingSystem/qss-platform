@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QSS.API.Authorization;
 using QSS.Application.DTOs;
 using QSS.Domain.Entities;
 using QSS.Infrastructure.Data;
@@ -9,7 +10,7 @@ namespace QSS.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Policy = Permissions.MaterialsView)]
 public class MaterialsController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
@@ -17,9 +18,14 @@ public class MaterialsController : ControllerBase
     public MaterialsController(ApplicationDbContext db) => _db = db;
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll([FromQuery] int? roomId)
     {
-        var materials = await _db.Materials.Select(m => new MaterialDto
+        var query = _db.Materials.Include(m => m.Room).AsQueryable();
+
+        if (roomId.HasValue)
+            query = query.Where(m => m.RoomId == roomId.Value);
+
+        var materials = await query.Select(m => new MaterialDto
         {
             Id = m.Id,
             Name = m.Name,
@@ -31,6 +37,8 @@ public class MaterialsController : ControllerBase
             Unit = m.Unit.ToString(),
             ExpirationDate = m.ExpirationDate,
             Category = m.Category,
+            RoomId = m.RoomId,
+            RoomName = m.Room != null ? m.Room.Name : null,
             IsLowStock = m.StockQuantity <= m.MinimumStockLevel,
             IsExpiringSoon = m.ExpirationDate.HasValue && m.ExpirationDate < DateTime.UtcNow.AddDays(30)
         }).ToListAsync();
@@ -38,7 +46,7 @@ public class MaterialsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.MaterialsManage)]
     public async Task<IActionResult> Create([FromBody] CreateMaterialDto dto)
     {
         var material = new Material
@@ -46,7 +54,8 @@ public class MaterialsController : ControllerBase
             Name = dto.Name, Description = dto.Description, SupplierName = dto.SupplierName,
             SupplierLink = dto.SupplierLink, StockQuantity = dto.StockQuantity,
             MinimumStockLevel = dto.MinimumStockLevel, Unit = dto.Unit,
-            ExpirationDate = dto.ExpirationDate, Category = dto.Category
+            ExpirationDate = dto.ExpirationDate, Category = dto.Category,
+            RoomId = dto.RoomId
         };
         _db.Materials.Add(material);
         await _db.SaveChangesAsync();
@@ -54,7 +63,7 @@ public class MaterialsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.MaterialsManage)]
     public async Task<IActionResult> Update(int id, [FromBody] CreateMaterialDto dto)
     {
         var m = await _db.Materials.FindAsync(id);
@@ -63,12 +72,13 @@ public class MaterialsController : ControllerBase
         m.SupplierLink = dto.SupplierLink; m.StockQuantity = dto.StockQuantity;
         m.MinimumStockLevel = dto.MinimumStockLevel; m.Unit = dto.Unit;
         m.ExpirationDate = dto.ExpirationDate; m.Category = dto.Category;
+        m.RoomId = dto.RoomId;
         await _db.SaveChangesAsync();
         return NoContent();
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.MaterialsManage)]
     public async Task<IActionResult> Delete(int id)
     {
         var m = await _db.Materials.FindAsync(id);
@@ -81,7 +91,7 @@ public class MaterialsController : ControllerBase
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Policy = Permissions.MedicationsView)]
 public class MedicationsController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
@@ -107,7 +117,7 @@ public class MedicationsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Superadmin,Admin,Dentist")]
+    [Authorize(Policy = Permissions.MedicationsManage)]
     public async Task<IActionResult> Create([FromBody] CreateMedicationDto dto)
     {
         var med = new Medication
@@ -123,7 +133,7 @@ public class MedicationsController : ControllerBase
     }
 
     [HttpPost("{id}/log-usage")]
-    [Authorize(Roles = "Superadmin,Admin,Dentist,DentalAssistant")]
+    [Authorize(Policy = Permissions.MedicationsLogUsage)]
     public async Task<IActionResult> LogUsage(int id, [FromBody] LogUsageDto dto)
     {
         var med = await _db.Medications.FindAsync(id);
@@ -144,7 +154,7 @@ public class MedicationsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Superadmin,Admin")]
+    [Authorize(Policy = Permissions.MedicationsManage)]
     public async Task<IActionResult> Delete(int id)
     {
         var m = await _db.Medications.FindAsync(id);

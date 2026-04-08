@@ -16,6 +16,10 @@ public class Material : BaseEntity
     public bool IsActive { get; set; } = true;
     public string? Category { get; set; }
 
+    // Room assignment (optional primary room)
+    public int? RoomId { get; set; }
+    public Room? Room { get; set; }
+
     // Navigation
     public ICollection<RoomInventoryItem> RoomInventoryItems { get; set; } = new List<RoomInventoryItem>();
 }
